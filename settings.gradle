@@ -1,0 +1,4 @@
+rootProject.name = 'order-payment-srv'
+
+include 'order-srv'
+include 'payment-srv'
