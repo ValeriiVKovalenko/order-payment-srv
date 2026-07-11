@@ -1,0 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/payment_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
