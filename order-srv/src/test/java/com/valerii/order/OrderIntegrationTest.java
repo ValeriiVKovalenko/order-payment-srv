@@ -84,9 +84,6 @@ public class OrderIntegrationTest {
         assertEquals(orderItemCoffee.getQuantity(), coffee.getQuantity());
         assertEquals(0,  orderItemCoffee.getLineTotal().compareTo(coffee.getLineTotal()));
         assertEquals(savedOrder.getId(), coffee.getOrderId());
-
-
-
     }
 
     private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
