@@ -85,6 +85,8 @@ public class OrderIntegrationTest {
         assertEquals(0,  orderItemCoffee.getLineTotal().compareTo(coffee.getLineTotal()));
         assertEquals(savedOrder.getId(), coffee.getOrderId());
 
+
+
     }
 
     private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
@@ -158,5 +160,8 @@ public class OrderIntegrationTest {
         assertEquals(OrderStatus.CREATED, savedOrder.getStatus());
         assertNotNull(savedOrder.getCreatedAt());
         assertNotNull(savedOrder.getUpdatedAt());
+
+        assertNotNull(savedOrder.getOrderItems());
+        assertTrue(savedOrder.getOrderItems().isEmpty());
     }
 }
