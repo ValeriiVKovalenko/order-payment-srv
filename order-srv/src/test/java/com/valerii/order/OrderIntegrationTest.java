@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -141,5 +142,21 @@ public class OrderIntegrationTest {
         MapSqlParameterSource params = new MapSqlParameterSource("customerId", 201L);
         Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
         assertEquals(0, orderCount);
+    }
+
+    @Test
+    void save_shouldPersistOrderWithoutItems() {
+        Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
+                Collections.emptyList());
+
+        //assert order
+        Order savedOrder = orderService.save(order);
+        assertNotNull(savedOrder.getId());
+        assertEquals(100L, savedOrder.getCustomerId());
+        assertEquals("USD", savedOrder.getCurrency());
+        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedOrder.getTotalAmount()));
+        assertEquals(OrderStatus.CREATED, savedOrder.getStatus());
+        assertNotNull(savedOrder.getCreatedAt());
+        assertNotNull(savedOrder.getUpdatedAt());
     }
 }

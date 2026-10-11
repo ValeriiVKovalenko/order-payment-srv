@@ -29,7 +29,7 @@ public class OrderResultSetExtractor implements ResultSetExtractor<Optional<Orde
                         .orderItemsEntity(new ArrayList<>())
                         .build();
             }
-            Long itemId = rs.getLong("item_id");
+            Long itemId = rs.getObject("item_id", Long.class);
             if (itemId != null) {
                 OrderItemEntity orderItem = OrderItemEntity.builder()
                         .id(rs.getLong("item_id"))

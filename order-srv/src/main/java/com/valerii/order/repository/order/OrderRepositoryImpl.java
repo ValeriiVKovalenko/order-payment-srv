@@ -52,7 +52,6 @@ public class OrderRepositoryImpl implements OrderRepository {
                 FROM orders O
                 LEFT JOIN order_items OI ON OI.order_id = O.id
                 WHERE O.id = :order_id
-                AND OI.order_id = :order_id
                 """;
         MapSqlParameterSource params = new MapSqlParameterSource("order_id", id);
         return jdbcTemplate.query(sql, params, new OrderResultSetExtractor());
