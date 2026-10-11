@@ -2,6 +2,7 @@ package com.valerii.order.model;
 
 import com.valerii.order.model.enums.OrderStatus;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.math.BigDecimal;
@@ -10,6 +11,7 @@ import java.util.List;
 
 @AllArgsConstructor
 @Getter
+@Builder
 public class Order {
     private final Long id;
     private final Long customerId;
