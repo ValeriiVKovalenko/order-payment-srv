@@ -4,7 +4,6 @@ import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.enums.OrderStatus;
-import com.valerii.order.repository.order.OrderRepository;
 import com.valerii.order.service.OrderService;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
