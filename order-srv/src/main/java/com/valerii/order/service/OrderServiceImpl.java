@@ -7,11 +7,13 @@ import com.valerii.order.repository.order.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Validated
 public class OrderServiceImpl implements  OrderService {
 
     private final OrderRepository orderRepository;

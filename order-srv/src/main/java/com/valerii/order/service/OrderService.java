@@ -1,7 +1,8 @@
 package com.valerii.order.service;
 
 import com.valerii.order.model.Order;
+import jakarta.validation.Valid;
 
 public interface OrderService {
-    Order save(Order order);
+    Order save(@Valid Order order);
 }
