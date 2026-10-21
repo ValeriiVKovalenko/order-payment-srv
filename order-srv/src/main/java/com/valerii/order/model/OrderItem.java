@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 public class OrderItem {
     private final Long id;
     private final Long orderId;
-    @NotNull(message = "Product name must not be null")
     @NotBlank(message = "Product name must be not an empty line")
     @Size(max = 50, message = "Product name must have maximum 50 characters")
     private final String productName;

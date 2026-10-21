@@ -25,11 +25,10 @@ public class Order {
     @Min(value = 0, message = "Total amount must not be negative")
     private final BigDecimal totalAmount;
     @NotNull(message = "Currency must not be null")
-    @NotBlank()
     @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be exactly 3 uppercase letters (e.g., USD)")
     private final String currency;
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
-    @NotNull
+    @NotNull(message = "Order items must not be null")
     private final List<@Valid OrderItem> orderItems;
 }
