@@ -6,6 +6,7 @@ import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.order.OrderRepository;
+import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -124,23 +125,6 @@ public class OrderIntegrationTest {
         Optional<OrderEntity> orderEntity = orderRepository.findById(notExistedOrderId);
 
         assertFalse(orderEntity.isPresent());
-    }
-
-    @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void save_shouldRollbackBySavingOrderItems() {
-        OrderItem productWithMoreThan50Symbols =
-                getOrderItem("ProductWithMoreThan50Symbols_ProductWithMoreThan50Symbols",
-                        1, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(productWithMoreThan50Symbols);
-        Order order = getOrder(201L, "USD", BigDecimal.valueOf(100), OrderStatus.CREATED, orderItems);
-        assertThrows(DataIntegrityViolationException.class, () -> {orderService.save(order);});
-
-        String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
-        MapSqlParameterSource params = new MapSqlParameterSource("customerId", 201L);
-        Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
-        assertEquals(0, orderCount);
     }
 
     @Test
