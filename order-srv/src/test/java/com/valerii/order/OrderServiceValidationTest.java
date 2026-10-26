@@ -48,7 +48,9 @@ public class OrderServiceValidationTest {
                 )
         );
 
-        if (customerId != null) {
+        if (customerId == null) {
+            assertThrows(ConstraintViolationException.class, () -> orderService.save(invalidOrder));
+        } else {
             assertOrderCountUnchanged(customerId, invalidOrder);
         }
     }
@@ -61,7 +63,7 @@ public class OrderServiceValidationTest {
 
     private void assertOrderCountUnchanged(Long customerId, Order order) {
         Long orderCountBeforeSave = getCountOrdersByCustomerId(customerId);
-        assertThrows(ConstraintViolationException.class, () -> {orderService.save(order);});
+        assertThrows(ConstraintViolationException.class, () -> orderService.save(order));
         Long orderCountAfterSave = getCountOrdersByCustomerId(customerId);
 
         assertEquals(orderCountBeforeSave, orderCountAfterSave);
@@ -132,7 +134,6 @@ public class OrderServiceValidationTest {
 
     @Test
     public void shouldSaveOrderWhenValid() {
-
         Order validOrderDto = getOrder(
                 201L,
                 "EUR",
@@ -174,7 +175,7 @@ public class OrderServiceValidationTest {
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
                 List.of(getOrderItem(productName, 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem(productName, 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
         assertOrderCountUnchanged(customerId, invalidOrder);
