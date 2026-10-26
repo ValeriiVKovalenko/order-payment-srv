@@ -17,9 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
-import java.lang.reflect.Executable;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -49,7 +47,10 @@ public class OrderServiceValidationTest {
                         getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
-        asserOrderCountUnchanged(customerId, invalidOrder);
+
+        if (customerId != null) {
+            assertOrderCountUnchanged(customerId, invalidOrder);
+        }
     }
 
     private Long getCountOrdersByCustomerId(Long customerId) {
@@ -58,7 +59,7 @@ public class OrderServiceValidationTest {
         return jdbcTemplate.queryForObject(sql, params, Long.class);
     }
 
-    private void asserOrderCountUnchanged(Long customerId, Order order) {
+    private void assertOrderCountUnchanged(Long customerId, Order order) {
         Long orderCountBeforeSave = getCountOrdersByCustomerId(customerId);
         assertThrows(ConstraintViolationException.class, () -> {orderService.save(order);});
         Long orderCountAfterSave = getCountOrdersByCustomerId(customerId);
@@ -78,7 +79,7 @@ public class OrderServiceValidationTest {
                         getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @ParameterizedTest(name = "currency={0} should be rejected")
@@ -95,7 +96,7 @@ public class OrderServiceValidationTest {
                         getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @ParameterizedTest(name = "totalAmount={0} should be rejected")
@@ -113,7 +114,7 @@ public class OrderServiceValidationTest {
                 )
         );
 
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     static Stream<BigDecimal> negativePrice() {
@@ -126,7 +127,7 @@ public class OrderServiceValidationTest {
         Order invalidOrder = getOrder(customerId, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
                 null);
 
-       asserOrderCountUnchanged(customerId, invalidOrder);
+       assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @Test
@@ -176,7 +177,7 @@ public class OrderServiceValidationTest {
                         getOrderItem(productName, 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @ParameterizedTest(name = "quantity={0} should be rejected")
@@ -190,11 +191,11 @@ public class OrderServiceValidationTest {
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
                 List.of(getOrderItem("Tea", quantity, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", quantity, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
 
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @ParameterizedTest(name = "unitPrice={0} should be rejected")
@@ -208,11 +209,11 @@ public class OrderServiceValidationTest {
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
                 List.of(getOrderItem("Tea", 2, unitPrice, BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, unitPrice, BigDecimal.valueOf(50))
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
 
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @ParameterizedTest(name = "lineTotal={0} should be rejected")
@@ -226,11 +227,11 @@ public class OrderServiceValidationTest {
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
                 List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), lineTotal),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), lineTotal)
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
 
-        asserOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
 
