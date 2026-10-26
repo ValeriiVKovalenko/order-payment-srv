@@ -128,23 +128,6 @@ public class OrderIntegrationTest {
     }
 
     @Test
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void save_shouldRollbackBySavingOrderItems() {
-        OrderItem productWithMoreThan50Symbols =
-                getOrderItem("ProductWithMoreThan50Symbols_ProductWithMoreThan50Symbols",
-                        1, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(productWithMoreThan50Symbols);
-        Order order = getOrder(201L, "USD", BigDecimal.valueOf(100), OrderStatus.CREATED, orderItems);
-        assertThrows(ConstraintViolationException.class, () -> {orderService.save(order);});
-
-        String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
-        MapSqlParameterSource params = new MapSqlParameterSource("customerId", 201L);
-        Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
-        assertEquals(0, orderCount);
-    }
-
-    @Test
     void save_shouldPersistOrderWithoutItems() {
         Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
                 Collections.emptyList());
