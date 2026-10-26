@@ -6,6 +6,7 @@ import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.order.OrderRepository;
+import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -135,7 +136,7 @@ public class OrderIntegrationTest {
         List<OrderItem> orderItems = new ArrayList<>();
         orderItems.add(productWithMoreThan50Symbols);
         Order order = getOrder(201L, "USD", BigDecimal.valueOf(100), OrderStatus.CREATED, orderItems);
-        assertThrows(DataIntegrityViolationException.class, () -> {orderService.save(order);});
+        assertThrows(ConstraintViolationException.class, () -> {orderService.save(order);});
 
         String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
         MapSqlParameterSource params = new MapSqlParameterSource("customerId", 201L);

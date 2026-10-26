@@ -123,13 +123,13 @@ public class OrderServiceValidationTest {
         return Stream.of(BigDecimal.valueOf(-50L));
     }
 
-   @Test
+    @Test
     public void shouldThrowException_WhenOrderItemsIsNull() {
-       Long customerId = 201L;
+        Long customerId = 201L;
         Order invalidOrder = getOrder(customerId, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
                 null);
 
-       assertOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, invalidOrder);
     }
 
     @Test
