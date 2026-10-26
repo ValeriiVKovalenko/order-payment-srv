@@ -48,34 +48,35 @@ public class OrderServiceValidationTest {
                         getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
                 )
         );
-
         assertThrows(ConstraintViolationException.class, () -> {
-            orderService.save(invalidOrder);
+            Order save = orderService.save(invalidOrder);
         });
 
-        String sql = "SELECT count(*) FROM orders WHERE currency = :currency AND total_amount = :total_amount AND status = :status";
-        MapSqlParameterSource params = new MapSqlParameterSource()
-                .addValue("currency", invalidOrder.getCurrency())
-                .addValue("total_amount", invalidOrder.getTotalAmount())
-                .addValue("status", invalidOrder.getStatus().name());
-        Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
-        assertEquals(0, orderCount);
+        if (customerId != null) {
+            String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
+            MapSqlParameterSource params = new MapSqlParameterSource("customerId", customerId);
+            Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
+            assertEquals(0, orderCount);
+        } else {
+            String sql = "SELECT count(*) FROM orders WHERE customer_id IS NULL";
+            Long orderCount = jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Long.class);
+            assertEquals(0, orderCount);
+        }
+
     }
 
     @Test
     public void shouldThrowException_WhenStatusIsNull() {
 
-        OrderItem orderItemTea =
-                getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
-        OrderItem orderItemCoffee =
-                getOrderItem("Coffee",1, BigDecimal.valueOf(50), BigDecimal.valueOf(50));
-
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(orderItemTea);
-        orderItems.add(orderItemCoffee);
-
-        Order invalidOrderDto = getOrder(501L, "usd", BigDecimal.valueOf(150), null, orderItems);
-
+        Order invalidOrderDto = getOrder(
+                401L,
+                "EUR",
+                BigDecimal.valueOf(150),
+                null,
+                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
+                )
+        );
         assertThrows(ConstraintViolationException.class, () -> {
             orderService.save(invalidOrderDto);
         });
@@ -90,11 +91,8 @@ public class OrderServiceValidationTest {
     @NullSource
     @ValueSource(strings = {"", "   ", "usd", "USDX", "U$D"})
     public void shouldThrowException_WhenInvalidCurrency(String currency) {
-
-        Long customerId = 507L;
-
         Order invalidOrder = getOrder(
-                customerId,
+                507L,
                 currency,
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
@@ -114,20 +112,56 @@ public class OrderServiceValidationTest {
         assertEquals(0, orderCount);
     }
 
+    @ParameterizedTest(name = "totalAmount={0} should be rejected")
+    @NullSource
+    @MethodSource("invalidUnitPriceAndLineTotal")
+    public void shouldThrowException_WhenInvalidTotalAmount(BigDecimal totalAmount) {
+        Order invalidOrder = getOrder(
+                507L,
+                "USD",
+                totalAmount,
+                OrderStatus.CREATED,
+                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
+                )
+        );
+
+        assertThrows(
+                ConstraintViolationException.class,
+                () -> orderService.save(invalidOrder)
+        );
+
+        String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
+        MapSqlParameterSource params = new MapSqlParameterSource("customerId", invalidOrder.getCustomerId());
+        Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
+        assertEquals(0, orderCount);
+    }
+
+   @Test
+    public void shouldThrowException_WhenOrderItemsIsNull() {
+        Order invalidOrder = getOrder(507L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
+                null);
+
+        assertThrows(ConstraintViolationException.class, () -> orderService.save(invalidOrder));
+
+        String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
+        MapSqlParameterSource params = new MapSqlParameterSource("customerId", invalidOrder.getCustomerId());
+        Long orderCount = jdbcTemplate.queryForObject(sql, params, Long.class);
+        assertEquals(0, orderCount);
+    }
+
     @Test
     public void shouldSaveOrderWhenValid() {
 
-        OrderItem orderItemTea =
-                getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
-        OrderItem orderItemCoffee =
-                getOrderItem("Coffee",1, BigDecimal.valueOf(50), BigDecimal.valueOf(50));
-
-        List<OrderItem> orderItems = new ArrayList<>();
-        orderItems.add(orderItemTea);
-        orderItems.add(orderItemCoffee);
-
-        Order validOrderDto =
-                getOrder(1L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, orderItems);
+        Order validOrderDto = getOrder(
+                201L,
+                "EUR",
+                BigDecimal.valueOf(150),
+                OrderStatus.CREATED,
+                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
+                )
+        );
 
         Order savedOrder = orderService.save(validOrderDto);
         assertEquals(validOrderDto.getStatus(), savedOrder.getStatus());
@@ -178,7 +212,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "quantity={0} should be rejected")
     @NullSource
     @ValueSource(ints = {-1, 0})
-    public void shouldThrowException_WhenQuantityIsZero(Integer quantity) {
+    public void shouldThrowException_WhenQuantityIsInvalid(Integer quantity) {
 
         OrderItem orderItemTea =
                 getOrderItem("Tea",
