@@ -1,13 +1,12 @@
 package com.valerii.order;
 
 import com.valerii.order.mapper.OrderMapper;
+import com.valerii.order.mapper.OrderMapperImpl;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -17,10 +16,9 @@ import java.util.List;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest()
 public class OrderMapperTest {
-    @Autowired
-    private OrderMapper orderMapper;
+
+    private final OrderMapper orderMapper = new OrderMapperImpl();
 
     @Test
     void should_correctlyMapFromEntityToDomain() {
@@ -48,7 +46,8 @@ public class OrderMapperTest {
         assertEquals(orderEntity.getUpdatedAt(), domain.getUpdatedAt());
 
         //assert order items
-        assertNotNull(orderEntity.getOrderItemsEntity());
+        assertNotNull(domain.getOrderItems());
+        assertFalse(domain.getOrderItems().isEmpty());
 
         OrderItem teeDomain = domain.getOrderItems().stream()
                 .filter(o -> o.getProductName().equals("Tee"))

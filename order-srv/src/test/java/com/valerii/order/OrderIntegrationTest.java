@@ -1,6 +1,5 @@
 package com.valerii.order;
 
-import com.github.dockerjava.api.exception.NotFoundException;
 import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
@@ -16,6 +15,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -144,12 +144,9 @@ public class OrderIntegrationTest {
         orderRepository.saveOrderItems(order.getOrderItems(), orderEntityWithId.getId());
 
         //find order
-        Optional<OrderEntity> orderEntityOptional = orderRepository.findById(orderEntityWithId.getId());
-        OrderEntity orderEntity = null;
+        OrderEntity orderEntity = orderRepository.findById(orderEntityWithId.getId())
+                .orElseThrow();
 
-        if(orderEntityOptional.isPresent()) {
-            orderEntity = orderEntityOptional.get();
-        }
         //assert Order
         assertNotNull(orderEntity);
         assertEquals(orderEntityWithId.getId(), orderEntity.getId());
@@ -160,6 +157,7 @@ public class OrderIntegrationTest {
 
         //assert orderItems
        assertNotNull(orderEntity.getOrderItemsEntity());
+       assertEquals(order.getOrderItems().size(), orderEntity.getOrderItemsEntity().size());
 
        //Tea
         OrderItemEntity teeOrderItemEntity = orderEntity.getOrderItemsEntity().stream()
@@ -167,6 +165,7 @@ public class OrderIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
+        assertNotNull(teeOrderItemEntity.getProductName());
         assertEquals(orderItemTea.getProductName(), teeOrderItemEntity.getProductName());
         assertEquals(0, orderItemTea.getUnitPrice().compareTo(teeOrderItemEntity.getUnitPrice()));
         assertEquals(orderItemTea.getQuantity(), teeOrderItemEntity.getQuantity());
@@ -179,6 +178,7 @@ public class OrderIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
+        assertNotNull(coffeeOrderItemEntity.getId());
         assertEquals(orderItemCoffee.getProductName(), coffeeOrderItemEntity.getProductName());
         assertEquals(0, orderItemCoffee.getUnitPrice().compareTo(coffeeOrderItemEntity.getUnitPrice()));
         assertEquals(orderItemCoffee.getQuantity(), coffeeOrderItemEntity.getQuantity());
@@ -206,6 +206,7 @@ public class OrderIntegrationTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void save_shouldRollbackOrderWithItems() {
         Order order = getOrder(
                 101L,
@@ -213,7 +214,7 @@ public class OrderIntegrationTest {
                 BigDecimal.valueOf(150),
                 OrderStatus.CREATED,
                 List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(10000000000000.00))
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(10000000000000L))
                 )
         );
         String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
