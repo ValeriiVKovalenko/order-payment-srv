@@ -1,12 +1,13 @@
 package com.valerii.order;
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.order.OrderRepository;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,7 +16,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -128,6 +128,65 @@ public class OrderIntegrationTest {
     }
 
     @Test
+    void find_shouldReturnOrderWithItems() {
+        OrderItem orderItemTea =
+                getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
+        OrderItem orderItemCoffee =
+                getOrderItem("Coffee",1, BigDecimal.valueOf(50), BigDecimal.valueOf(50));
+
+        List<OrderItem> orderItems = new ArrayList<>();
+        orderItems.add(orderItemTea);
+        orderItems.add(orderItemCoffee);
+
+        //saved order and orderItems
+        Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, orderItems);
+        OrderEntity orderEntityWithId = orderRepository.saveOrder(order);
+        orderRepository.saveOrderItems(order.getOrderItems(), orderEntityWithId.getId());
+
+        //find order
+        Optional<OrderEntity> orderEntityOptional = orderRepository.findById(orderEntityWithId.getId());
+        OrderEntity orderEntity = null;
+
+        if(orderEntityOptional.isPresent()) {
+            orderEntity = orderEntityOptional.get();
+        }
+        //assert Order
+        assertNotNull(orderEntity);
+        assertEquals(orderEntityWithId.getId(), orderEntity.getId());
+        assertEquals(order.getCustomerId(), orderEntity.getCustomerId());
+        assertEquals(0, order.getTotalAmount().compareTo(orderEntity.getTotalAmount()));
+        assertEquals(order.getStatus().name(), orderEntity.getStatus());
+        assertEquals(order.getCurrency(), orderEntity.getCurrency());
+
+        //assert orderItems
+       assertNotNull(orderEntity.getOrderItemsEntity());
+
+       //Tea
+        OrderItemEntity teeOrderItemEntity = orderEntity.getOrderItemsEntity().stream()
+                .filter(productName -> "Tea".equals(productName.getProductName()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(orderItemTea.getProductName(), teeOrderItemEntity.getProductName());
+        assertEquals(0, orderItemTea.getUnitPrice().compareTo(teeOrderItemEntity.getUnitPrice()));
+        assertEquals(orderItemTea.getQuantity(), teeOrderItemEntity.getQuantity());
+        assertEquals(0, orderItemTea.getLineTotal().compareTo(teeOrderItemEntity.getLineTotal()));
+        assertEquals(orderEntityWithId.getId(), teeOrderItemEntity.getOrderId());
+
+        //Coffee
+        OrderItemEntity coffeeOrderItemEntity = orderEntity.getOrderItemsEntity().stream()
+                .filter(productName -> "Coffee".equals(productName.getProductName()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(orderItemCoffee.getProductName(), coffeeOrderItemEntity.getProductName());
+        assertEquals(0, orderItemCoffee.getUnitPrice().compareTo(coffeeOrderItemEntity.getUnitPrice()));
+        assertEquals(orderItemCoffee.getQuantity(), coffeeOrderItemEntity.getQuantity());
+        assertEquals(0, orderItemCoffee.getLineTotal().compareTo(coffeeOrderItemEntity.getLineTotal()));
+        assertEquals(orderEntityWithId.getId(), coffeeOrderItemEntity.getOrderId());
+    }
+
+    @Test
     void save_shouldPersistOrderWithoutItems() {
         Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
                 Collections.emptyList());
@@ -144,5 +203,26 @@ public class OrderIntegrationTest {
 
         assertNotNull(savedOrder.getOrderItems());
         assertTrue(savedOrder.getOrderItems().isEmpty());
+    }
+
+    @Test
+    void save_shouldRollbackOrderWithItems() {
+        Order order = getOrder(
+                101L,
+                "EUR",
+                BigDecimal.valueOf(150),
+                OrderStatus.CREATED,
+                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
+                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(10000000000000.00))
+                )
+        );
+        String sql = "SELECT count(*) FROM orders WHERE customer_id = :customerId";
+        MapSqlParameterSource parameterSource = new MapSqlParameterSource("customerId", order.getCustomerId());
+        Integer countBeforeSaveOrder = jdbcTemplate.queryForObject(sql, parameterSource, Integer.class);
+
+        assertThrows(DataIntegrityViolationException.class, () -> orderService.save(order));
+        Integer countAfterSaveOrder = jdbcTemplate.queryForObject(sql, parameterSource, Integer.class);
+
+        assertEquals(countBeforeSaveOrder, countAfterSaveOrder);
     }
 }
