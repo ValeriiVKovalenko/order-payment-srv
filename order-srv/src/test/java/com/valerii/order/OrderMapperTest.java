@@ -124,7 +124,7 @@ public class OrderMapperTest {
         assertEquals(orderEntity.getUpdatedAt(), domain.getUpdatedAt());
 
         //assert order items
-        assertNotNull(orderEntity.getOrderItemsEntity());
-        assertTrue(orderEntity.getOrderItemsEntity().isEmpty());
+        assertNotNull(domain.getOrderItems());
+        assertTrue(domain.getOrderItems().isEmpty());
     }
 }

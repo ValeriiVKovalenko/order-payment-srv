@@ -165,7 +165,7 @@ public class OrderIntegrationTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertNotNull(teeOrderItemEntity.getProductName());
+        assertNotNull(teeOrderItemEntity.getId());
         assertEquals(orderItemTea.getProductName(), teeOrderItemEntity.getProductName());
         assertEquals(0, orderItemTea.getUnitPrice().compareTo(teeOrderItemEntity.getUnitPrice()));
         assertEquals(orderItemTea.getQuantity(), teeOrderItemEntity.getQuantity());
