@@ -1,5 +1,6 @@
 package com.valerii.order.service;
 
+import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.entity.OrderEntity;
@@ -27,5 +28,12 @@ public class OrderServiceImpl implements  OrderService {
         Optional<OrderEntity> order = orderRepository.findById(orderEntity.getId());
         return order.map(orderMapper::toDomain)
                 .orElseThrow(() -> new IllegalStateException("Order not found after save: " + orderEntity.getId()));
+    }
+
+    @Override
+    public Order findById(Long orderId) {
+        OrderEntity orderEntity = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException(String.format("Order with id `%d` not found", orderId)));
+        return orderMapper.toDomain(orderEntity);
     }
 }
