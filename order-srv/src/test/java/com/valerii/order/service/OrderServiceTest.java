@@ -39,7 +39,7 @@ public class OrderServiceTest {
 
 
     @Test
-    void getById_shouldReturnOrder_whenExists() {
+    void findById_shouldReturnOrder_whenExists() {
         //given
         Long orderId = 100L;
         Long orderItemTeaId = 1L;
@@ -82,7 +82,7 @@ public class OrderServiceTest {
     }
 
     @Test
-    void getById_shouldReturnNotFound_whenNotFound() {
+    void findById_shouldReturnNotFound_whenNotFound() {
         //given
         Long orderId = 99L;
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());

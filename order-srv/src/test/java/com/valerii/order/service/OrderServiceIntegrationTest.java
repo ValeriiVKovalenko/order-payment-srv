@@ -1,11 +1,10 @@
 package com.valerii.order.service;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
-import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.enums.OrderStatus;
-import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +19,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,8 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OrderServiceIntegrationTest {
     @Autowired
     OrderService orderService;
-    @Autowired
-    OrderRepository orderRepository;
+
     @Autowired
     NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -106,7 +103,7 @@ public class OrderServiceIntegrationTest {
     }
 
     @Test
-    void find_shouldReturnOptionalEmpty() {
+    void findByOrderId_shouldReturnNotFound_whenNotFound() {
         OrderItem orderItemTea =
                 getOrderItem("Tee", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
         OrderItem orderItemCoffee =
@@ -120,9 +117,7 @@ public class OrderServiceIntegrationTest {
         orderService.save(order);
         Long notExistedOrderId = -2L;
 
-        Optional<OrderEntity> orderEntity = orderRepository.findById(notExistedOrderId);
-
-        assertFalse(orderEntity.isPresent());
+        assertThrows(OrderNotFoundException.class,() -> orderService.findById(notExistedOrderId));
     }
 
     @Test
