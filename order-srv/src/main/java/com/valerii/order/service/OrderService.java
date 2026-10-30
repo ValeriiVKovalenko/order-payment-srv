@@ -5,4 +5,6 @@ import jakarta.validation.Valid;
 
 public interface OrderService {
     Order save(@Valid Order order);
+
+    Order getById(Long orderId);
 }
