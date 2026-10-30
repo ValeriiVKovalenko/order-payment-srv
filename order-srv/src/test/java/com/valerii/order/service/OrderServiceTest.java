@@ -22,8 +22,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class OrderServiceTest {
@@ -89,6 +88,8 @@ public class OrderServiceTest {
 
         assertThatThrownBy(() -> orderService.findById(orderId))
                 .isInstanceOf(OrderNotFoundException.class);
+
+        verifyNoInteractions(orderMapper);
     }
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,

@@ -103,7 +103,7 @@ public class OrderServiceIntegrationTest {
     }
 
     @Test
-    void findByOrderId_shouldReturnNotFound_whenNotFound() {
+    void findById_shouldThrowOrderNotFoundException_whenNotFound() {
         OrderItem orderItemTea =
                 getOrderItem("Tee", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
         OrderItem orderItemCoffee =
