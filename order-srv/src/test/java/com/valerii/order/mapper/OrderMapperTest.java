@@ -1,7 +1,5 @@
-package com.valerii.order;
+package com.valerii.order.mapper;
 
-import com.valerii.order.mapper.OrderMapper;
-import com.valerii.order.mapper.OrderMapperImpl;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;

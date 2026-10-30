@@ -1,4 +1,4 @@
-package com.valerii.order;
+package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.model.Order;
@@ -37,7 +37,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "customerId={0} should be rejected")
     @NullSource
     @ValueSource(longs = {-1L, 0L})
-    public void shouldThrowException_WhenCustomerIsInvalid(Long customerId) {
+    void shouldThrowException_WhenCustomerIsInvalid(Long customerId) {
         Order invalidOrder = getOrder(
                 customerId,
                 "EUR",
@@ -70,7 +70,7 @@ public class OrderServiceValidationTest {
     }
 
     @Test
-    public void shouldThrowException_WhenStatusIsNull() {
+    void shouldThrowException_WhenStatusIsNull() {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 customerId,
@@ -87,7 +87,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "currency={0} should be rejected")
     @NullSource
     @ValueSource(strings = {"", "   ", "usd", "USDX", "U$D"})
-    public void shouldThrowException_WhenInvalidCurrency(String currency) {
+    void shouldThrowException_WhenInvalidCurrency(String currency) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 customerId,
@@ -104,7 +104,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "totalAmount={0} should be rejected")
     @NullSource
     @MethodSource("negativePrice")
-    public void shouldThrowException_WhenInvalidTotalAmount(BigDecimal totalAmount) {
+    void shouldThrowException_WhenInvalidTotalAmount(BigDecimal totalAmount) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 customerId,
@@ -124,7 +124,7 @@ public class OrderServiceValidationTest {
     }
 
     @Test
-    public void shouldThrowException_WhenOrderItemsIsNull() {
+    void shouldThrowException_WhenOrderItemsIsNull() {
         Long customerId = 201L;
         Order invalidOrder = getOrder(customerId, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
                 null);
@@ -133,7 +133,7 @@ public class OrderServiceValidationTest {
     }
 
     @Test
-    public void shouldSaveOrderWhenValid() {
+    void shouldSaveOrderWhenValid() {
         Order validOrderDto = getOrder(
                 201L,
                 "EUR",
@@ -152,7 +152,7 @@ public class OrderServiceValidationTest {
     }
 
     @Test
-    public void shouldSaveOrderWhenItemsAreEmpty() {
+    void shouldSaveOrderWhenItemsAreEmpty() {
         Order validOrderDto =
                 getOrder(1L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, emptyList());
 
@@ -167,7 +167,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "productName={0} should be rejected")
     @NullSource
     @ValueSource(strings = {"", "   ", "Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_"})
-    public void shouldThrowException_WhenProductNameIsInvalid(String productName) {
+    void shouldThrowException_WhenProductNameIsInvalid(String productName) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 201L,
@@ -184,7 +184,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "quantity={0} should be rejected")
     @NullSource
     @ValueSource(ints = {-1, 0})
-    public void shouldThrowException_WhenQuantityIsInvalid(Integer quantity) {
+    void shouldThrowException_WhenQuantityIsInvalid(Integer quantity) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 201L,
@@ -202,7 +202,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "unitPrice={0} should be rejected")
     @NullSource
     @MethodSource("negativePrice")
-    public void shouldThrowException_WhenUnitPriceIsInvalid(BigDecimal unitPrice) {
+    void shouldThrowException_WhenUnitPriceIsInvalid(BigDecimal unitPrice) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 201L,
@@ -220,7 +220,7 @@ public class OrderServiceValidationTest {
     @ParameterizedTest(name = "lineTotal={0} should be rejected")
     @NullSource
     @MethodSource("negativePrice")
-    public void shouldThrowException_WhenLineTotalIsInvalid(BigDecimal lineTotal) {
+    void shouldThrowException_WhenLineTotalIsInvalid(BigDecimal lineTotal) {
         Long customerId = 201L;
         Order invalidOrder = getOrder(
                 201L,

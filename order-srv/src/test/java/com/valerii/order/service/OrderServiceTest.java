@@ -1,14 +1,13 @@
-package com.valerii.order;
+package com.valerii.order.service;
 
 import com.valerii.order.exception.OrderNotFoundException;
-import com.valerii.order.mapper.OrderMapperImpl;
+import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.order.OrderRepository;
-import com.valerii.order.service.OrderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,8 +21,8 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,7 +32,7 @@ public class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private OrderMapperImpl orderMapper;
+    private OrderMapper orderMapper;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -45,7 +44,7 @@ public class OrderServiceTest {
         Long orderId = 100L;
         Long orderItemTeaId = 1L;
         Long orderItemCoffeeId = 2L;
-        OrderItemEntity teeItemEntity = getItemEntity(orderItemTeaId, orderId, "Tee", 2, BigDecimal.valueOf(50),
+        OrderItemEntity teeItemEntity = getItemEntity(orderItemTeaId, orderId, "Tea", 2, BigDecimal.valueOf(50),
                 BigDecimal.valueOf(100));
         OrderItemEntity coffeeItemEntity = getItemEntity(orderItemCoffeeId, orderId, "Coffee", 1,
                 BigDecimal.valueOf(150), BigDecimal.valueOf(150));
@@ -58,24 +57,28 @@ public class OrderServiceTest {
 
         Order orderDomain = getOrder(
                 orderId,
-                100L,
+                101L,
                 "USD",
-                BigDecimal.valueOf(150),
+                BigDecimal.valueOf(250),
                 OrderStatus.CREATED,
                 List.of(getOrderItem(orderItemTeaId, orderId, "Tea", 2, BigDecimal.valueOf(50),
                                 BigDecimal.valueOf(100)),
-                        getOrderItem(orderItemCoffeeId, orderId, "Coffee", 1, BigDecimal.valueOf(50),
-                                BigDecimal.valueOf(50))));
+                        getOrderItem(orderItemCoffeeId, orderId, "Coffee", 1, BigDecimal.valueOf(150),
+                                BigDecimal.valueOf(150))));
 
         when(orderMapper.toDomain(orderEntity)).thenReturn(orderDomain);
 
         //when
-        Order result = orderService.getById(orderId);
+        Order result = orderService.findById(orderId);
 
         //then
         assertNotNull(result);
+        assertSame(orderDomain, result);
         assertNotNull(result.getId());
         assertEquals(orderId, result.getId());
+
+        verify(orderRepository).findById(orderId);
+        verify(orderMapper).toDomain(orderEntity);
     }
 
     @Test
@@ -84,7 +87,7 @@ public class OrderServiceTest {
         Long orderId = 99L;
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> orderService.getById(orderId))
+        assertThatThrownBy(() -> orderService.findById(orderId))
                 .isInstanceOf(OrderNotFoundException.class);
     }
 

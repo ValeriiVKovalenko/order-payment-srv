@@ -31,7 +31,7 @@ public class OrderServiceImpl implements  OrderService {
     }
 
     @Override
-    public Order getById(Long orderId) {
+    public Order findById(Long orderId) {
         OrderEntity orderEntity = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(String.format("Order with id `%d` not found", orderId)));
         return orderMapper.toDomain(orderEntity);
