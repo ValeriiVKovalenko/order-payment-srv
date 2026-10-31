@@ -4,9 +4,11 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Component
 public class OrderResponseMapperImpl implements OrderResponseMapper {
 
     @Override

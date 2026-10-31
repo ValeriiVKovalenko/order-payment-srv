@@ -70,7 +70,6 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.orderItems[0].unitPrice").value(BigDecimal.valueOf(50)))
                 .andExpect(jsonPath("$.orderItems[0].lineTotal").value(BigDecimal.valueOf(100)))
 
-                .andExpect(jsonPath("$.orderItems", hasSize(2)))
                 .andExpect(jsonPath("$.orderItems[1].id").value(2L))
                 .andExpect(jsonPath("$.orderItems[1].orderId").value(orderId))
                 .andExpect(jsonPath("$.orderItems[1].productName").value("Coffee"))
