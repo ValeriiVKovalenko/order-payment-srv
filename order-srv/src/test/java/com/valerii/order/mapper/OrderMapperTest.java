@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OrderMapperTest {
 
     private final OrderMapper orderMapper = new OrderMapperImpl();
+    private final OrderResponseMapper orderResponseMapper = new OrderResponseMapperImpl();
 
     @Test
     void should_correctlyMapFromEntityToDomain() {
@@ -144,10 +145,10 @@ public class OrderMapperTest {
                 OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
                 List.of(teeItem, coffeeItem));
 
-        OrderResponseDto result = orderMapper.toResponseDto(domain);
+        OrderResponseDto result = orderResponseMapper.toResponseDto(domain);
 
         // assert order
-        assertNotNull(domain);
+        assertNotNull(result);
         assertEquals(domain.getId(), result.getId());
         assertEquals(domain.getCustomerId(), result.getCustomerId());
         assertEquals(0, domain.getTotalAmount().compareTo(result.getTotalAmount()));
@@ -219,7 +220,7 @@ public class OrderMapperTest {
                 OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
                 emptyList());
 
-        OrderResponseDto result = orderMapper.toResponseDto(domain);
+        OrderResponseDto result = orderResponseMapper.toResponseDto(domain);
 
         // assert order
         assertNotNull(result);

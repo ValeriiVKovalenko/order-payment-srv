@@ -1,7 +1,7 @@
 package com.valerii.order.controller;
 
 import com.valerii.order.exception.OrderNotFoundException;
-import com.valerii.order.mapper.OrderMapper;
+import com.valerii.order.mapper.OrderResponseMapper;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.response.order.OrderResponseDto;
@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
+import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,7 +35,7 @@ public class OrderControllerTest {
     private OrderService orderService;
 
     @MockitoBean
-    private OrderMapper orderMapper;
+    private OrderResponseMapper orderResponseMapper;
 
     @Test
     void findById_shouldReturnOrder_whenExists() throws Exception {
@@ -49,11 +50,33 @@ public class OrderControllerTest {
                 ));
 
         when(orderService.findById(orderId)).thenReturn(order);
-        when(orderMapper.toResponseDto(order)).thenReturn(orderResponse);
+        when(orderResponseMapper.toResponseDto(order)).thenReturn(orderResponse);
 
         mockMvc.perform(get("/api/v1/orders/{id}", orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(orderId));
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.customerId").value(101L))
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.totalAmount").value(BigDecimal.valueOf(250)))
+                .andExpect(jsonPath("$.createdAt").value("2026-10-26T18:28:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-10-26T18:28:00Z"))
+
+                .andExpect(jsonPath("$.orderItems", hasSize(2)))
+                .andExpect(jsonPath("$.orderItems[0].id").value(1L))
+                .andExpect(jsonPath("$.orderItems[0].orderId").value(orderId))
+                .andExpect(jsonPath("$.orderItems[0].productName").value("Tea"))
+                .andExpect(jsonPath("$.orderItems[0].quantity").value(2))
+                .andExpect(jsonPath("$.orderItems[0].unitPrice").value(BigDecimal.valueOf(50)))
+                .andExpect(jsonPath("$.orderItems[0].lineTotal").value(BigDecimal.valueOf(100)))
+
+                .andExpect(jsonPath("$.orderItems", hasSize(2)))
+                .andExpect(jsonPath("$.orderItems[1].id").value(2L))
+                .andExpect(jsonPath("$.orderItems[1].orderId").value(orderId))
+                .andExpect(jsonPath("$.orderItems[1].productName").value("Coffee"))
+                .andExpect(jsonPath("$.orderItems[1].quantity").value(1))
+                .andExpect(jsonPath("$.orderItems[1].unitPrice").value(BigDecimal.valueOf(150)))
+                .andExpect(jsonPath("$.orderItems[1].lineTotal").value(BigDecimal.valueOf(150)));
     }
 
     @Test
