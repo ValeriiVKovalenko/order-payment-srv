@@ -14,14 +14,14 @@ import java.util.List;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class OrderMapperTest {
+public class OrderMapperDomainTest {
 
     private final OrderMapper orderMapper = new OrderMapperImpl();
 
     @Test
     void should_correctlyMapFromEntityToDomain() {
         Long orderId = 1L;
-        OrderItemEntity teeItemEntity = getItemEntity(1L, orderId, "Tee", 2, BigDecimal.valueOf(50),
+        OrderItemEntity teeItemEntity = getItemEntity(1L, orderId, "Tea", 2, BigDecimal.valueOf(50),
                 BigDecimal.valueOf(100));
         OrderItemEntity coffeeItemEntity = getItemEntity(2L, orderId, "Coffee", 1,
                 BigDecimal.valueOf(150), BigDecimal.valueOf(150));
@@ -48,7 +48,7 @@ public class OrderMapperTest {
         assertFalse(domain.getOrderItems().isEmpty());
 
         OrderItem teeDomain = domain.getOrderItems().stream()
-                .filter(o -> o.getProductName().equals("Tee"))
+                .filter(o -> o.getProductName().equals("Tea"))
                 .findFirst()
                 .orElseThrow();
 
