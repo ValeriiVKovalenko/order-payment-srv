@@ -1,12 +1,12 @@
 package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.service.OrderService;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -54,7 +54,7 @@ public class OrderServiceValidationTest {
 
     private void assertOrderCountUnchanged(Long customerId, CreateOrderCommand order) {
         Long before = getCountOrdersByCustomerId(customerId);
-        assertThrows(ConstraintViolationException.class, () -> orderService.save(order));
+        assertThrows(InvalidCreateOrderCommandException.class, () -> orderService.save(order));
         Long after = getCountOrdersByCustomerId(customerId);
 
         assertEquals(before, after);
@@ -81,7 +81,7 @@ public class OrderServiceValidationTest {
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, "USD", null);
 
         Long before = getCountOrdersByCustomerId(customerId);
-        assertThrows(NullPointerException.class, () -> orderService.save(createInvalidOrderCommand));
+        assertThrows(InvalidCreateOrderCommandException.class, () -> orderService.save(createInvalidOrderCommand));
         Long after = getCountOrdersByCustomerId(customerId);
 
         assertEquals(before, after);
@@ -134,15 +134,7 @@ public class OrderServiceValidationTest {
                 List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
                         getCreateOrderItemCommand("Coffee", quantity, BigDecimal.valueOf(26.38))));
 
-        if (quantity == null) {
-            Long before = getCountOrdersByCustomerId(customerId);
-            assertThrows(NullPointerException.class, () -> orderService.save(createInvalidOrderCommand));
-            Long after = getCountOrdersByCustomerId(customerId);
-
-            assertEquals(before, after);
-        } else {
             assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
-        }
     }
 
     @ParameterizedTest(name = "unitPrice={0} should be rejected")
@@ -155,15 +147,7 @@ public class OrderServiceValidationTest {
                 List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
                         getCreateOrderItemCommand("Coffee", 1, unitPrice)));
 
-        if (unitPrice == null) {
-            Long before = getCountOrdersByCustomerId(customerId);
-            assertThrows(NullPointerException.class, () -> orderService.save(createInvalidOrderCommand));
-            Long after = getCountOrdersByCustomerId(customerId);
-
-            assertEquals(before, after);
-        } else {
-            assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
-        }
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     private CreateOrderItemCommand getCreateOrderItemCommand(String productName, Integer quantity,

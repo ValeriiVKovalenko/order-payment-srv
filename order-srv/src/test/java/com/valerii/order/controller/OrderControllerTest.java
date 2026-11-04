@@ -29,14 +29,14 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
+import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(OrderController.class)
 @Import(GlobalExceptionHandler.class)
@@ -160,7 +160,9 @@ public class OrderControllerTest {
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(header().string("Location", (endsWith("/api/v1/orders/" + orderResponse.getId()))))
                 .andExpect(jsonPath("$.id").value(orderId))
                 .andExpect(jsonPath("$.customerId").value(101L))
                 .andExpect(jsonPath("$.currency").value("USD"))

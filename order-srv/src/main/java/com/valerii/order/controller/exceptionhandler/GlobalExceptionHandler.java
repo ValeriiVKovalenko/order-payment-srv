@@ -1,5 +1,7 @@
 package com.valerii.order.controller.exceptionhandler;
 
+import com.valerii.order.exception.DomainInvariantViolationException;
+import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.response.api.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,6 +36,18 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
+    }
+
+    @ExceptionHandler(InvalidCreateOrderCommandException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidCreateOrderCommandException(InvalidCreateOrderCommandException ex,
+                                                                                        HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DomainInvariantViolationException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidDomainInvariantViolationException(DomainInvariantViolationException ex,
+                                                                                        HttpServletRequest request) {
+        return  build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {

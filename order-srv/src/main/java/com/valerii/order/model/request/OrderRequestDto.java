@@ -1,5 +1,6 @@
 package com.valerii.order.model.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -23,7 +24,6 @@ public class OrderRequestDto {
     @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be exactly 3 uppercase letters (e.g., USD)")
     private final String currency;
 
-    @NotNull(message = "Order items must not be null")
     @NotEmpty(message = "Order items must not be empty list")
-    private final List<OrderItemRequestDto> orderItems;
+    private final List<@Valid OrderItemRequestDto> orderItems;
 }

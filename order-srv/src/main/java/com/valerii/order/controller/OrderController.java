@@ -11,6 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,6 +33,11 @@ public class OrderController {
     public ResponseEntity<OrderResponseDto> saveOrder(@RequestBody @Valid OrderRequestDto orderRequestDto) {
         CreateOrderCommand createOrderCommand = orderRequestMapper.toCreateOrderCommand(orderRequestDto);
         Order save = orderService.save(createOrderCommand);
-        return ResponseEntity.ok(orderResponseMapper.toResponseDto(save));
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(save.getId())
+                .toUri();
+        return ResponseEntity.created(location)
+                .body(orderResponseMapper.toResponseDto(save));
     }
 }

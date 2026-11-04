@@ -1,5 +1,7 @@
 package com.valerii.order.service;
 
+import com.valerii.order.exception.DomainInvariantViolationException;
+import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.CreateOrderCommand;
@@ -7,7 +9,6 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.repository.order.OrderRepository;
 import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,11 +31,16 @@ public class OrderServiceImpl implements  OrderService {
 
     @Override
     @Transactional
-    public Order save(CreateOrderCommand requestOrder) {
-        Order orderToSave = createOrder(requestOrder);
-        Set<ConstraintViolation<Order>> violations = validator.validate(orderToSave);
-        if (!violations.isEmpty()) {
-            throw new ConstraintViolationException(violations);
+    public Order save(CreateOrderCommand createOrderCommand) {
+        Set<ConstraintViolation<CreateOrderCommand>> createOrderCommandViolations = validator.validate(createOrderCommand);
+        if (!createOrderCommandViolations.isEmpty()) {
+            throw new InvalidCreateOrderCommandException(createOrderCommandViolations);
+        }
+
+        Order orderToSave = createOrder(createOrderCommand);
+        Set<ConstraintViolation<Order>> orderDomainViolations = validator.validate(orderToSave);
+        if (!orderDomainViolations.isEmpty()) {
+            throw new DomainInvariantViolationException(orderDomainViolations);
         }
 
         OrderEntity orderEntity = orderRepository.saveOrder(orderToSave);

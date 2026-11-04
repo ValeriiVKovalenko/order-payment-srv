@@ -1,6 +1,7 @@
 package com.valerii.order.service;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.CreateOrderItemCommand;
@@ -8,7 +9,6 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.order.OrderRepository;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -138,7 +138,7 @@ public class OrderServiceIntegrationTest {
         String currency = "USD";
         CreateOrderCommand createOrderCommand = getCreateOrderCommand(customerId, currency, emptyList());
 
-        assertThrows(ConstraintViolationException.class,() -> orderService.save(createOrderCommand));
+        assertThrows(InvalidCreateOrderCommandException.class,() -> orderService.save(createOrderCommand));
     }
 
     @Test

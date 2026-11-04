@@ -23,9 +23,11 @@ public class OrderItem {
 
     @NotNull(message = "Unit price must not be null")
     @Min(value = 0, message = "Unit price must be non-negative value")
+    @Digits(fraction = 2, integer = 13, message = "Unit price must have no more than two decimal places")
     private final BigDecimal unitPrice;
 
     @NotNull(message = "Line total must not be null")
     @Min(value = 0, message = "Line total must be non-negative value")
+    @Digits(fraction = 2, integer = 13, message = "Line total must have no more than two decimal places")
     private final BigDecimal lineTotal;
 }
