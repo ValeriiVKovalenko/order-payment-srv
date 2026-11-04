@@ -35,5 +35,6 @@ public class Order {
     private final OffsetDateTime updatedAt;
 
     @NotNull(message = "Order items must not be null")
+    @NotEmpty(message = "Order items must not be empty list")
     private final List<@Valid OrderItem> orderItems;
 }

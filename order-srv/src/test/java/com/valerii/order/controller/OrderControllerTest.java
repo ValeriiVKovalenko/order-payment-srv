@@ -1,41 +1,61 @@
 package com.valerii.order.controller;
 
+import com.valerii.order.controller.exceptionhandler.GlobalExceptionHandler;
 import com.valerii.order.exception.OrderNotFoundException;
+import com.valerii.order.mapper.OrderRequestMapper;
 import com.valerii.order.mapper.OrderResponseMapper;
+import com.valerii.order.model.CreateOrderCommand;
+import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.enums.OrderStatus;
+import com.valerii.order.model.request.OrderItemRequestDto;
+import com.valerii.order.model.request.OrderRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
 import com.valerii.order.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 
+import static java.util.Collections.emptyList;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(OrderController.class)
+@Import(GlobalExceptionHandler.class)
 public class OrderControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private OrderService orderService;
 
     @MockitoBean
     private OrderResponseMapper orderResponseMapper;
+
+    @MockitoBean
+    private OrderRequestMapper orderRequestMapper;
 
     @Test
     void findById_shouldReturnOrder_whenExists() throws Exception {
@@ -106,6 +126,83 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
+    @Test
+    void saveOrder_shouldReturnCreated_whenIdIsValid() throws Exception {
+        Long orderId = 100L;
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency ,
+                List.of(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 1, BigDecimal.valueOf(26.38))));
+
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(101L, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+        when(orderRequestMapper.toCreateOrderCommand(orderRequest)).thenReturn(createOrderCommand);
+
+        Order order = getOrder(orderId, customerId, currency, BigDecimal.valueOf(53.26), OrderStatus.CREATED,
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                List.of(getOrderItem(1L, orderId, "Tea", 2, BigDecimal.valueOf(13.44),
+                                BigDecimal.valueOf(26.88)),
+                        getOrderItem(2L, orderId, "Coffee", 1, BigDecimal.valueOf(26.38),
+                                BigDecimal.valueOf(26.38))));
+        when(orderService.save(createOrderCommand)).thenReturn(order);
+
+        OrderResponseDto orderResponse = getOrderResponse(orderId, customerId, currency, OrderStatus.CREATED, BigDecimal.valueOf(53.26),
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                List.of(getOrderItemResponse(1L, orderId, "Tea", 2, BigDecimal.valueOf(13.44), BigDecimal.valueOf(26.88)),
+                        getOrderItemResponse(2L, orderId, "Coffee", 1, BigDecimal.valueOf(26.38), BigDecimal.valueOf(26.38))
+                ));
+        when(orderResponseMapper.toResponseDto(order)).thenReturn(orderResponse);
+
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(orderId))
+                .andExpect(jsonPath("$.customerId").value(101L))
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.totalAmount").value(BigDecimal.valueOf(53.26)))
+                .andExpect(jsonPath("$.createdAt").value("2026-10-26T18:28:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-10-26T18:28:00Z"))
+
+                .andExpect(jsonPath("$.orderItems", hasSize(2)))
+                .andExpect(jsonPath("$.orderItems[0].id").value(1L))
+                .andExpect(jsonPath("$.orderItems[0].orderId").value(orderId))
+                .andExpect(jsonPath("$.orderItems[0].productName").value("Tea"))
+                .andExpect(jsonPath("$.orderItems[0].quantity").value(2))
+                .andExpect(jsonPath("$.orderItems[0].unitPrice").value(BigDecimal.valueOf(13.44)))
+                .andExpect(jsonPath("$.orderItems[0].lineTotal").value(BigDecimal.valueOf(26.88)))
+
+                .andExpect(jsonPath("$.orderItems[1].id").value(2L))
+                .andExpect(jsonPath("$.orderItems[1].orderId").value(orderId))
+                .andExpect(jsonPath("$.orderItems[1].productName").value("Coffee"))
+                .andExpect(jsonPath("$.orderItems[1].quantity").value(1))
+                .andExpect(jsonPath("$.orderItems[1].unitPrice").value(BigDecimal.valueOf(26.38)))
+                .andExpect(jsonPath("$.orderItems[1].lineTotal").value(BigDecimal.valueOf(26.38)));
+    }
+
+    @Test
+    void saveOrder_shouldReturnBadRequest_whenOrderInvalid() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency, emptyList());
+        String errorMessage = "orderItems: Order items must not be empty list";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
     private OrderResponseDto getOrderResponse(Long id, Long customerId, String currency, OrderStatus status,
                                               BigDecimal totalAmount, OffsetDateTime createdAt,
                                               OffsetDateTime updatedAt, List<OrderItemResponseDto> orderItems) {
@@ -130,6 +227,68 @@ public class OrderControllerTest {
                 .quantity(quantity)
                 .unitPrice(unitPrice)
                 .lineTotal(lineTotal)
+                .build();
+    }
+
+    private CreateOrderItemCommand getCreateOrderItemCommand(String productName, Integer quantity,
+                                                             BigDecimal unitPrice) {
+        return CreateOrderItemCommand.builder()
+                .productName(productName)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
+                .build();
+    }
+
+    private CreateOrderCommand getCreateOrderCommand(Long customerId, String currency,
+                                                     List<CreateOrderItemCommand> orderItemRequestDtoList) {
+        return CreateOrderCommand.builder()
+                .customerId(customerId)
+                .currency(currency)
+                .orderItems(orderItemRequestDtoList)
+                .build();
+    }
+
+    private Order getOrder(Long id, Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
+                           OffsetDateTime createdAt, OffsetDateTime updatedAt,
+                           List<OrderItem> orderItems) {
+        return Order.builder()
+                .id(id)
+                .customerId(customerId)
+                .currency(currency)
+                .totalAmount(totalAmount)
+                .status(status)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
+                .orderItems(orderItems)
+                .build();
+    }
+
+    private OrderItem getOrderItem(Long id, Long orderId, String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
+        return OrderItem.builder()
+                .id(id)
+                .orderId(orderId)
+                .productName(productName)
+                .unitPrice(unitPrice)
+                .quantity(quantity)
+                .lineTotal(lineTotal)
+                .build();
+    }
+
+    private OrderRequestDto getOrderRequest(Long customerId, String currency,
+                                            List<OrderItemRequestDto> itemRequestDtoList) {
+        return OrderRequestDto.builder()
+                .customerId(customerId)
+                .currency(currency)
+                .orderItems(itemRequestDtoList)
+                .build();
+    }
+
+    private OrderItemRequestDto getOrderItemRequest(String productName, Integer quantity,
+                                                    BigDecimal unitPrice) {
+        return OrderItemRequestDto.builder()
+                .productName(productName)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
                 .build();
     }
 }
