@@ -1,6 +1,7 @@
 package com.valerii.order.mapper;
 
 import com.valerii.order.model.CreateOrderCommand;
+import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.request.OrderItemRequestDto;
 import com.valerii.order.model.request.OrderRequestDto;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,10 @@ public class OrderMapperRequestTest {
         assertEquals(customerId, createOrderCommand.getCustomerId());
         assertEquals(currency, createOrderCommand.getCurrency());
 
-        assertNotNull(orderRequest.getOrderItems());
-        assertFalse(orderRequest.getOrderItems().isEmpty());
+        assertNotNull(createOrderCommand.getOrderItems());
+        assertFalse(createOrderCommand.getOrderItems().isEmpty());
 
-        OrderItemRequestDto teaOrderItem = orderRequest.getOrderItems().stream()
+        CreateOrderItemCommand teaOrderItem = createOrderCommand.getOrderItems().stream()
                 .filter(item -> "Tea".equals(item.getProductName()))
                 .findFirst()
                 .orElseThrow();
@@ -38,7 +39,7 @@ public class OrderMapperRequestTest {
         assertEquals(2, teaOrderItem.getQuantity());
         assertEquals(0, BigDecimal.valueOf(13.44).compareTo(teaOrderItem.getUnitPrice()));
 
-        OrderItemRequestDto coffeeOrderItem = orderRequest.getOrderItems().stream()
+        CreateOrderItemCommand coffeeOrderItem = createOrderCommand.getOrderItems().stream()
                 .filter(item -> "Coffee".equals(item.getProductName()))
                 .findFirst()
                 .orElseThrow();
