@@ -15,6 +15,8 @@ import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
 import com.valerii.order.service.OrderService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -26,6 +28,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
@@ -188,11 +191,131 @@ public class OrderControllerTest {
     }
 
     @Test
-    void saveOrder_shouldReturnBadRequest_whenOrderInvalid() throws Exception {
+    void saveOrder_shouldReturnBadRequest_whenOrderItemsEmptyList() throws Exception {
         Long customerId = 101L;
         String currency = "USD";
         OrderRequestDto orderRequest = getOrderRequest(customerId, currency, emptyList());
         String errorMessage = "orderItems: Order items must not be empty list";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void saveOrder_shouldReturnBadRequest_whenWithoutProductName() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency,
+                List.of(getOrderItemRequest(" ", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 1, BigDecimal.valueOf(26.38))));
+        String errorMessage = "orderItems[0].productName: Product name must be not an empty line";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void saveOrder_shouldReturnBadRequest_whenQuantityIsZero() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency,
+                List.of(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 0, BigDecimal.valueOf(26.38))));
+        String errorMessage = "orderItems[1].quantity: Quantity must be value greater than 0";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "currency={0} should be rejected")
+    @ValueSource(strings = {"", "   ", "usd", "USDX", "U$D"})
+    void saveOrder_shouldReturnBadRequest_whenCurrencyInvalid(String currency) throws Exception {
+        Long customerId = 101L;
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency,
+                List.of(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 1, BigDecimal.valueOf(26.38))));
+        String errorMessage = "currency: Currency must be exactly 3 uppercase letters (e.g., USD)";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "customerId={0} should be rejected")
+    @ValueSource(longs = {-1, 0})
+    void saveOrder_shouldReturnBadRequest_whenCustomerIdIsInvalid(Long customerId) throws Exception {
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency,
+                List.of(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 1, BigDecimal.valueOf(26.38))));
+        String errorMessage = "customerId: Customer id must be more than 0";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void saveOrder_shouldReturnBadRequest_whenOneOrderItemIsNull() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency ,
+                Arrays.asList(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        null));
+        String errorMessage = "orderItems[1]: Order item must not be null";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void saveOrder_shouldReturnBadRequest_whenOneOrderItemUnitPriceIsNegative() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency ,
+                List.of(getOrderItemRequest("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getOrderItemRequest("Coffee", 1, BigDecimal.valueOf(-26.38))));
+        String errorMessage = "orderItems[1].unitPrice: Unit price must be non-negative value";
         mockMvc.perform(post("/api/v1/orders")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderRequest)))

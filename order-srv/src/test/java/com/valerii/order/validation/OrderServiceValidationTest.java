@@ -2,6 +2,7 @@ package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
+import com.valerii.order.exception.OrderAmountExceededException;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
@@ -148,6 +149,21 @@ public class OrderServiceValidationTest {
                         getCreateOrderItemCommand("Coffee", 1, unitPrice)));
 
         assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
+    }
+
+    @Test
+    void shouldThrowException_WhenTotalAmountMoreThanAllowed() {
+        Long customerId = 201L;
+        String currency = "CNY";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 10000, new BigDecimal("387065861.06")),
+                        getCreateOrderItemCommand("Bugatti divo", 10000, new  BigDecimal("407065861.96"))));
+
+        Long before = getCountOrdersByCustomerId(customerId);
+        assertThrows(OrderAmountExceededException.class, () -> orderService.save(createInvalidOrderCommand));
+        Long after = getCountOrdersByCustomerId(customerId);
+
+        assertEquals(before, after);
     }
 
     private CreateOrderItemCommand getCreateOrderItemCommand(String productName, Integer quantity,

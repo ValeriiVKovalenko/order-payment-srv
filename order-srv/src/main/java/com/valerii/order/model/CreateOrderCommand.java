@@ -23,5 +23,5 @@ public class CreateOrderCommand {
     private final String currency;
 
     @NotEmpty(message = "Order items must not be empty list")
-    private final List<@Valid CreateOrderItemCommand> orderItems;
+    private final List<@NotNull(message = "Order item must not be null") @Valid CreateOrderItemCommand> orderItems;
 }

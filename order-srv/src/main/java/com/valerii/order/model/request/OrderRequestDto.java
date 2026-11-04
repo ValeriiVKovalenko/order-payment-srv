@@ -25,5 +25,5 @@ public class OrderRequestDto {
     private final String currency;
 
     @NotEmpty(message = "Order items must not be empty list")
-    private final List<@Valid OrderItemRequestDto> orderItems;
+    private final List<@NotNull(message = "Order item must not be null") @Valid OrderItemRequestDto> orderItems;
 }

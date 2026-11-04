@@ -2,6 +2,7 @@ package com.valerii.order.service;
 
 import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
+import com.valerii.order.exception.OrderAmountExceededException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.CreateOrderCommand;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,6 +26,8 @@ import static com.valerii.order.model.OrderFactory.createOrder;
 @RequiredArgsConstructor
 @Validated
 public class OrderServiceImpl implements  OrderService {
+
+    private static final BigDecimal MAX_TOTAL_AMOUNT = new BigDecimal("1000000000000.00");
 
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
@@ -41,6 +45,10 @@ public class OrderServiceImpl implements  OrderService {
         Set<ConstraintViolation<Order>> orderDomainViolations = validator.validate(orderToSave);
         if (!orderDomainViolations.isEmpty()) {
             throw new DomainInvariantViolationException(orderDomainViolations);
+        }
+
+        if (orderToSave.getTotalAmount().compareTo(MAX_TOTAL_AMOUNT) > 0) {
+            throw new OrderAmountExceededException(orderToSave.getTotalAmount(),  MAX_TOTAL_AMOUNT);
         }
 
         OrderEntity orderEntity = orderRepository.saveOrder(orderToSave);
