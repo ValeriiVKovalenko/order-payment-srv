@@ -1,0 +1,27 @@
+package com.valerii.order.model;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import lombok.Builder;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+@RequiredArgsConstructor
+@Builder
+@Data
+public class CreateOrderCommand {
+    @NotNull(message = "Customer id must not be null")
+    @Min(value = 1, message = "Customer id must be more than 0")
+    private final Long customerId;
+
+    @NotNull(message = "Currency must not be null")
+    @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be exactly 3 uppercase letters (e.g., USD)")
+    private final String currency;
+
+    @NotEmpty(message = "Order items must not be empty list")
+    private final List<@NotNull(message = "Order item must not be null") @Valid CreateOrderItemCommand> orderItems;
+}

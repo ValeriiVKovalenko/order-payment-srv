@@ -1,11 +1,13 @@
 package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.InvalidCreateOrderCommandException;
+import com.valerii.order.exception.InvalidOrderAmountException;
+import com.valerii.order.model.CreateOrderCommand;
+import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
-import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.service.OrderService;
-import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -38,21 +40,11 @@ public class OrderServiceValidationTest {
     @NullSource
     @ValueSource(longs = {-1L, 0L})
     void shouldThrowException_WhenCustomerIsInvalid(Long customerId) {
-        Order invalidOrder = getOrder(
-                customerId,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, "USD",
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
 
-        if (customerId == null) {
-            assertThrows(ConstraintViolationException.class, () -> orderService.save(invalidOrder));
-        } else {
-            assertOrderCountUnchanged(customerId, invalidOrder);
-        }
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     private Long getCountOrdersByCustomerId(Long customerId) {
@@ -61,27 +53,12 @@ public class OrderServiceValidationTest {
         return jdbcTemplate.queryForObject(sql, params, Long.class);
     }
 
-    private void assertOrderCountUnchanged(Long customerId, Order order) {
-        Long orderCountBeforeSave = getCountOrdersByCustomerId(customerId);
-        assertThrows(ConstraintViolationException.class, () -> orderService.save(order));
-        Long orderCountAfterSave = getCountOrdersByCustomerId(customerId);
+    private void assertOrderCountUnchanged(Long customerId, CreateOrderCommand order) {
+        Long before = getCountOrdersByCustomerId(customerId);
+        assertThrows(InvalidCreateOrderCommandException.class, () -> orderService.save(order));
+        Long after = getCountOrdersByCustomerId(customerId);
 
-        assertEquals(orderCountBeforeSave, orderCountAfterSave);
-    }
-
-    @Test
-    void shouldThrowException_WhenStatusIsNull() {
-        Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                customerId,
-                "EUR",
-                BigDecimal.valueOf(150),
-                null,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        assertEquals(before, after);
     }
 
     @ParameterizedTest(name = "currency={0} should be rejected")
@@ -89,34 +66,10 @@ public class OrderServiceValidationTest {
     @ValueSource(strings = {"", "   ", "usd", "USDX", "U$D"})
     void shouldThrowException_WhenInvalidCurrency(String currency) {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                customerId,
-                currency,
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
-        assertOrderCountUnchanged(customerId, invalidOrder);
-    }
-
-    @ParameterizedTest(name = "totalAmount={0} should be rejected")
-    @NullSource
-    @MethodSource("negativePrice")
-    void shouldThrowException_WhenInvalidTotalAmount(BigDecimal totalAmount) {
-        Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                customerId,
-                "USD",
-                totalAmount,
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
-
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     static Stream<BigDecimal> negativePrice() {
@@ -126,42 +79,38 @@ public class OrderServiceValidationTest {
     @Test
     void shouldThrowException_WhenOrderItemsIsNull() {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(customerId, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED,
-                null);
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, "USD", null);
 
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        Long before = getCountOrdersByCustomerId(customerId);
+        assertThrows(InvalidCreateOrderCommandException.class, () -> orderService.save(createInvalidOrderCommand));
+        Long after = getCountOrdersByCustomerId(customerId);
+
+        assertEquals(before, after);
     }
 
     @Test
     void shouldSaveOrderWhenValid() {
-        Order validOrderDto = getOrder(
-                201L,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
+        Long customerId = 201L;
+        String currency = "USD";
+        BigDecimal totalAmount = BigDecimal.valueOf(53.26);
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
 
-        Order savedOrder = orderService.save(validOrderDto);
-        assertEquals(validOrderDto.getStatus(), savedOrder.getStatus());
-        assertEquals(validOrderDto.getCustomerId(), savedOrder.getCustomerId());
-        assertEquals(validOrderDto.getCurrency(), savedOrder.getCurrency());
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedOrder.getTotalAmount()));
+        Order savedOrder = orderService.save(createOrderCommand);
+        assertEquals(OrderStatus.CREATED, savedOrder.getStatus());
+        assertEquals(customerId, savedOrder.getCustomerId());
+        assertEquals(currency, savedOrder.getCurrency());
+        assertEquals(0, totalAmount.compareTo(savedOrder.getTotalAmount()));
     }
 
     @Test
-    void shouldSaveOrderWhenItemsAreEmpty() {
-        Order validOrderDto =
-                getOrder(1L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, emptyList());
+    void shouldThrowException_whenItemsAreEmpty() {
+        Long customerId = 201L;
+        String currency = "USD";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency, emptyList());
 
-        Order savedOrder = orderService.save(validOrderDto);
-        assertEquals(validOrderDto.getStatus(), savedOrder.getStatus());
-        assertEquals(validOrderDto.getCustomerId(), savedOrder.getCustomerId());
-        assertEquals(validOrderDto.getCurrency(), savedOrder.getCurrency());
-        assertEquals(0, BigDecimal.valueOf(150).compareTo(savedOrder.getTotalAmount()));
-        assertTrue(savedOrder.getOrderItems().isEmpty());
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     @ParameterizedTest(name = "productName={0} should be rejected")
@@ -169,16 +118,11 @@ public class OrderServiceValidationTest {
     @ValueSource(strings = {"", "   ", "Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_Tea_"})
     void shouldThrowException_WhenProductNameIsInvalid(String productName) {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                201L,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem(productName, 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        String currency = "USD";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand(productName, 1, new BigDecimal("26.38"))));
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     @ParameterizedTest(name = "quantity={0} should be rejected")
@@ -186,17 +130,12 @@ public class OrderServiceValidationTest {
     @ValueSource(ints = {-1, 0})
     void shouldThrowException_WhenQuantityIsInvalid(Integer quantity) {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                201L,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", quantity, BigDecimal.valueOf(50), BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
+        String currency = "USD";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", quantity, new BigDecimal("26.38"))));
 
-        assertOrderCountUnchanged(customerId, invalidOrder);
+            assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
     @ParameterizedTest(name = "unitPrice={0} should be rejected")
@@ -204,55 +143,67 @@ public class OrderServiceValidationTest {
     @MethodSource("negativePrice")
     void shouldThrowException_WhenUnitPriceIsInvalid(BigDecimal unitPrice) {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                201L,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, unitPrice, BigDecimal.valueOf(100)),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
+        String currency = "USD";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, unitPrice)));
 
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
-    @ParameterizedTest(name = "lineTotal={0} should be rejected")
-    @NullSource
-    @MethodSource("negativePrice")
-    void shouldThrowException_WhenLineTotalIsInvalid(BigDecimal lineTotal) {
+    @Test
+    void shouldReject_whenTotalAmountExceedsNumericPrecision() {
         Long customerId = 201L;
-        Order invalidOrder = getOrder(
-                201L,
-                "EUR",
-                BigDecimal.valueOf(150),
-                OrderStatus.CREATED,
-                List.of(getOrderItem("Tea", 2, BigDecimal.valueOf(50), lineTotal),
-                        getOrderItem("Coffee", 1, BigDecimal.valueOf(50), BigDecimal.valueOf(50))
-                )
-        );
+        String currency = "CNY";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 1, new BigDecimal("6000000000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new  BigDecimal("6000000000000.00"))));
 
-        assertOrderCountUnchanged(customerId, invalidOrder);
+        Long before = getCountOrdersByCustomerId(customerId);
+        InvalidOrderAmountException exception =
+                assertThrows(InvalidOrderAmountException.class, () -> orderService.save(createInvalidOrderCommand));
+        String expectedMessage = "Total amount 12000000000000.00 exceeds maximum allowed 9999999999999.99";
+        assertEquals(expectedMessage, exception.getMessage());
+
+        Long after = getCountOrdersByCustomerId(customerId);
+
+        assertEquals(before, after);
     }
 
+    @Test
+    void shouldReject_whenLineTotalExceedsNumericPrecision() {
+        Long customerId = 201L;
+        String currency = "CNY";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 100000, new BigDecimal("600000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new  BigDecimal("600000000.00"))));
 
-    private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
-                           List<OrderItem> orderItems) {
-        return Order.builder()
-                .customerId(customerId)
-                .currency(currency)
-                .totalAmount(totalAmount)
-                .status(status)
-                .orderItems(orderItems)
+        Long before = getCountOrdersByCustomerId(customerId);
+        InvalidOrderAmountException exception =
+                assertThrows(InvalidOrderAmountException.class, () -> orderService.save(createInvalidOrderCommand));
+        String expectedMessage = "Line total 60000000000000.00 exceeds maximum allowed 9999999999999.99";
+        assertEquals(expectedMessage, exception.getMessage());
+
+        Long after = getCountOrdersByCustomerId(customerId);
+
+        assertEquals(before, after);
+    }
+
+    private CreateOrderItemCommand getCreateOrderItemCommand(String productName, Integer quantity,
+                                                             BigDecimal unitPrice) {
+        return CreateOrderItemCommand.builder()
+                .productName(productName)
+                .quantity(quantity)
+                .unitPrice(unitPrice)
                 .build();
     }
 
-    private OrderItem getOrderItem(String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
-        return OrderItem.builder()
-                .productName(productName)
-                .unitPrice(unitPrice)
-                .quantity(quantity)
-                .lineTotal(lineTotal)
+    private CreateOrderCommand getCreateOrderCommand(Long customerId, String currency,
+                                                     List<CreateOrderItemCommand> orderItemRequestDtoList) {
+        return CreateOrderCommand.builder()
+                .customerId(customerId)
+                .currency(currency)
+                .orderItems(orderItemRequestDtoList)
                 .build();
     }
 }

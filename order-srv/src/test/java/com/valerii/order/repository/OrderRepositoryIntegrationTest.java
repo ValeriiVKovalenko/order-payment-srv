@@ -50,15 +50,15 @@ public class OrderRepositoryIntegrationTest {
     @Test
     void find_shouldReturnOptionalEmptyWhenOrderWithDifferentIdExists() {
         OrderItem orderItemTea =
-                getOrderItem("Tee", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
+                getOrderItem("Tee", 2, new BigDecimal("50"), new BigDecimal("100"));
         OrderItem orderItemCoffee =
-                getOrderItem("Coffee",1, BigDecimal.valueOf(50), BigDecimal.valueOf(50));
+                getOrderItem("Coffee",1, new BigDecimal("50"), new BigDecimal("50"));
 
         List<OrderItem> orderItems = new ArrayList<>();
         orderItems.add(orderItemTea);
         orderItems.add(orderItemCoffee);
 
-        Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, orderItems);
+        Order order = getOrder(100L, "USD", new BigDecimal("150"), OrderStatus.CREATED, orderItems);
         Long notExistedOrderId = -2L;
         OrderEntity orderEntity = orderRepository.saveOrder(order);
         orderRepository.saveOrderItems(orderItems, orderEntity.getId());
@@ -71,16 +71,16 @@ public class OrderRepositoryIntegrationTest {
     @Test
     void find_shouldReturnOrderWithItems() {
         OrderItem orderItemTea =
-                getOrderItem("Tea", 2, BigDecimal.valueOf(50), BigDecimal.valueOf(100));
+                getOrderItem("Tea", 2, new BigDecimal("50"), new BigDecimal("100"));
         OrderItem orderItemCoffee =
-                getOrderItem("Coffee",1, BigDecimal.valueOf(50), BigDecimal.valueOf(50));
+                getOrderItem("Coffee",1, new BigDecimal("50"), new BigDecimal("50"));
 
         List<OrderItem> orderItems = new ArrayList<>();
         orderItems.add(orderItemTea);
         orderItems.add(orderItemCoffee);
 
         //saved order and orderItems
-        Order order = getOrder(100L, "USD", BigDecimal.valueOf(150), OrderStatus.CREATED, orderItems);
+        Order order = getOrder(100L, "USD", new BigDecimal("150"), OrderStatus.CREATED, orderItems);
         OrderEntity orderEntityWithId = orderRepository.saveOrder(order);
         orderRepository.saveOrderItems(order.getOrderItems(), orderEntityWithId.getId());
 

@@ -14,7 +14,7 @@ import java.util.List;
 import static java.util.Collections.emptyList;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class OrderMapperDomainTest {
+public class OrderDomainMapperTest {
 
     private final OrderMapper orderMapper = new OrderMapperImpl();
 

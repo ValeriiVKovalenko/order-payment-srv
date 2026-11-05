@@ -25,6 +25,7 @@ public class Order {
 
     @NotNull(message = "Total amount must not be null")
     @Min(value = 0, message = "Total amount must not be negative")
+    @Digits(fraction = 2, integer = 13, message = "Total amount must fit NUMERIC(15,2): at most 13 integer digits and 2 decimal places")
     private final BigDecimal totalAmount;
 
     @NotNull(message = "Currency must not be null")
@@ -35,5 +36,6 @@ public class Order {
     private final OffsetDateTime updatedAt;
 
     @NotNull(message = "Order items must not be null")
+    @NotEmpty(message = "Order items must not be empty list")
     private final List<@Valid OrderItem> orderItems;
 }
