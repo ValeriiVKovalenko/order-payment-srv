@@ -1,8 +1,8 @@
 package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
-import com.valerii.order.exception.OrderAmountExceededException;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
@@ -41,8 +41,8 @@ public class OrderServiceValidationTest {
     @ValueSource(longs = {-1L, 0L})
     void shouldThrowException_WhenCustomerIsInvalid(Long customerId) {
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, "USD",
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
-                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
 
         assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
@@ -67,8 +67,8 @@ public class OrderServiceValidationTest {
     void shouldThrowException_WhenInvalidCurrency(String currency) {
         Long customerId = 201L;
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
-                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
         assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
@@ -94,8 +94,8 @@ public class OrderServiceValidationTest {
         String currency = "USD";
         BigDecimal totalAmount = BigDecimal.valueOf(53.26);
         CreateOrderCommand createOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
-                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", 1, new BigDecimal("26.38"))));
 
         Order savedOrder = orderService.save(createOrderCommand);
         assertEquals(OrderStatus.CREATED, savedOrder.getStatus());
@@ -120,8 +120,8 @@ public class OrderServiceValidationTest {
         Long customerId = 201L;
         String currency = "USD";
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
-                        getCreateOrderItemCommand(productName, 1, BigDecimal.valueOf(26.38))));
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand(productName, 1, new BigDecimal("26.38"))));
         assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
 
@@ -132,8 +132,8 @@ public class OrderServiceValidationTest {
         Long customerId = 201L;
         String currency = "USD";
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
-                        getCreateOrderItemCommand("Coffee", quantity, BigDecimal.valueOf(26.38))));
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
+                        getCreateOrderItemCommand("Coffee", quantity, new BigDecimal("26.38"))));
 
             assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
     }
@@ -145,7 +145,7 @@ public class OrderServiceValidationTest {
         Long customerId = 201L;
         String currency = "USD";
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
+                List.of(getCreateOrderItemCommand("Tea", 2, new BigDecimal("13.44")),
                         getCreateOrderItemCommand("Coffee", 1, unitPrice)));
 
         assertOrderCountUnchanged(customerId, createInvalidOrderCommand);
@@ -156,11 +156,11 @@ public class OrderServiceValidationTest {
         Long customerId = 201L;
         String currency = "CNY";
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Bugatti veyron", 10000, new BigDecimal("387065861.06")),
-                        getCreateOrderItemCommand("Bugatti divo", 10000, new  BigDecimal("407065861.96"))));
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 10000, new BigDecimal("3870658619.06")),
+                        getCreateOrderItemCommand("Bugatti divo", 10000, new  BigDecimal("4070658619.96"))));
 
         Long before = getCountOrdersByCustomerId(customerId);
-        assertThrows(OrderAmountExceededException.class, () -> orderService.save(createInvalidOrderCommand));
+        assertThrows(DomainInvariantViolationException.class, () -> orderService.save(createInvalidOrderCommand));
         Long after = getCountOrdersByCustomerId(customerId);
 
         assertEquals(before, after);

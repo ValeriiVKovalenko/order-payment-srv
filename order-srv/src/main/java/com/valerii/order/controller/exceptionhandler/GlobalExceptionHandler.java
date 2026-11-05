@@ -5,6 +5,7 @@ import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.response.api.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,6 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderNotFoundException.class)
@@ -47,7 +49,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DomainInvariantViolationException.class)
     public ResponseEntity<ApiErrorResponseDto> handleInvalidDomainInvariantViolationException(DomainInvariantViolationException ex,
                                                                                         HttpServletRequest request) {
-        return  build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
+        log.error("Domain invariant violated: {}", ex.getMessage(), ex);
+        return  build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.", request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {
