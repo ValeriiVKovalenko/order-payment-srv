@@ -1,5 +1,6 @@
 package com.valerii.order.model;
 
+import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.model.enums.OrderStatus;
 import lombok.experimental.UtilityClass;
 
@@ -9,6 +10,8 @@ import java.util.List;
 
 @UtilityClass
 public class OrderFactory {
+
+    private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999999.99");
 
     public static Order createOrder(CreateOrderCommand orderCommand) {
 
@@ -20,6 +23,9 @@ public class OrderFactory {
             Integer quantity = orderItem.getQuantity();
             BigDecimal unitPrice = orderItem.getUnitPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+            if (lineTotal.compareTo(MAX_AMOUNT) > 0) {
+                throw new InvalidOrderAmountException("Line total", lineTotal, MAX_AMOUNT);
+            }
             OrderItem resultOrderItem = OrderItem.builder()
                     .productName(orderItem.getProductName())
                     .quantity(orderItem.getQuantity())
@@ -29,6 +35,10 @@ public class OrderFactory {
             resultList.add(resultOrderItem);
 
             totalAmount = totalAmount.add(lineTotal);
+
+            if (totalAmount.compareTo(MAX_AMOUNT) > 0) {
+                throw new InvalidOrderAmountException("Total amount" ,totalAmount, MAX_AMOUNT);
+            }
         }
 
         return Order.builder()

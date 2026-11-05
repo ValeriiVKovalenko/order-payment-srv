@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponseDto> handleInvalidDomainInvariantViolationException(DomainInvariantViolationException ex,
                                                                                         HttpServletRequest request) {
         log.error("Domain invariant violated: {}", ex.getMessage(), ex);
-        return  build(HttpStatus.BAD_REQUEST, "An unexpected error occurred. Please try again later.", request);
+        return  build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.", request);
     }
 
     @ExceptionHandler(InvalidOrderAmountException.class)

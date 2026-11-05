@@ -1,6 +1,8 @@
 package com.valerii.order.controller;
 
 import com.valerii.order.controller.exceptionhandler.GlobalExceptionHandler;
+import com.valerii.order.exception.DomainInvariantViolationException;
+import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderRequestMapper;
 import com.valerii.order.mapper.OrderResponseMapper;
@@ -14,6 +16,10 @@ import com.valerii.order.model.request.OrderRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
 import com.valerii.order.service.OrderService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -30,10 +36,13 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Collections.emptyList;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -328,6 +337,66 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
+    @Test
+    void saveOrder_shouldReturnUnprocessableContent_whenOrderAmountIsInvalid()  throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency ,
+                List.of(getOrderItemRequest("Bugatti veyron", 1, new BigDecimal("6000000000000.00")),
+                        getOrderItemRequest("Bugatti divo", 1, new BigDecimal("6000000000000.00"))));
+
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(101L, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 1, new BigDecimal("6000000000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new BigDecimal("6000000000000.00"))));
+        when(orderRequestMapper.toCreateOrderCommand(orderRequest)).thenReturn(createOrderCommand);
+
+        when(orderService.save(any(CreateOrderCommand.class)))
+                .thenThrow(new InvalidOrderAmountException(
+                        "Total amount", new BigDecimal("12000000000000.00"), new BigDecimal("9999999999999.99")));
+
+        String errorMessage = "Total amount 12000000000000.00 exceeds maximum allowed 9999999999999.99";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isUnprocessableContent())
+                .andExpect(jsonPath("$.status").value(422))
+                .andExpect(jsonPath("$.error").value("Unprocessable Content"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void saveOrder_shouldReturnInternalServerError_whenDomainInvariantIsViolated() throws Exception {
+        Long customerId = 101L;
+        String currency = "USD";
+        OrderRequestDto orderRequest = getOrderRequest(customerId, currency ,
+                List.of(getOrderItemRequest("Bugatti veyron", 1, new BigDecimal("6000000.00")),
+                        getOrderItemRequest("Bugatti divo", 1, new BigDecimal("6000000.00"))));
+
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(101L, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 1, new BigDecimal("6000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new BigDecimal("6000000.00"))));
+        when(orderRequestMapper.toCreateOrderCommand(orderRequest)).thenReturn(createOrderCommand);
+        Set<ConstraintViolation<Order>> orderViolations = getOrderViolations();
+
+        when(orderService.save(any(CreateOrderCommand.class)))
+                .thenThrow(new DomainInvariantViolationException(orderViolations));
+
+        String errorMessage = "An unexpected error occurred. Please try again later.";
+        mockMvc.perform(post("/api/v1/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderRequest)))
+                .andDo(print())
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.error").value("Internal Server Error"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
     private OrderResponseDto getOrderResponse(Long id, Long customerId, String currency, OrderStatus status,
                                               BigDecimal totalAmount, OffsetDateTime createdAt,
                                               OffsetDateTime updatedAt, List<OrderItemResponseDto> orderItems) {
@@ -415,5 +484,22 @@ public class OrderControllerTest {
                 .quantity(quantity)
                 .unitPrice(unitPrice)
                 .build();
+    }
+
+    private Set<ConstraintViolation<Order>> getOrderViolations() {
+        Order invalidOrder = getOrder(10L, 101L, "USD", new BigDecimal("12000000000000.00"), OrderStatus.CREATED,
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                List.of(getOrderItem(1L, 10L, "Tea", 2, new BigDecimal("13.44"),
+                                new BigDecimal("26.88")),
+                        getOrderItem(2L, 10L, "Coffee", 1, new BigDecimal("26.38"),
+                                new BigDecimal("26.38"))));
+
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            Validator validator = factory.getValidator();
+            Set<ConstraintViolation<Order>> violations = validator.validate(invalidOrder);
+            assertFalse(violations.isEmpty());
+            return violations;
+        }
     }
 }

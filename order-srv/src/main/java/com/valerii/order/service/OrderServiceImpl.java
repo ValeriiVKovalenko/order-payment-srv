@@ -2,11 +2,9 @@ package com.valerii.order.service;
 
 import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
-import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.CreateOrderCommand;
-import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.repository.order.OrderRepository;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 
@@ -28,8 +25,6 @@ import static com.valerii.order.model.OrderFactory.createOrder;
 @Validated
 public class OrderServiceImpl implements  OrderService {
 
-    private static final BigDecimal MAX_AMOUNT = new BigDecimal("9999999999999.99");
-
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final Validator validator;
@@ -38,11 +33,9 @@ public class OrderServiceImpl implements  OrderService {
     @Transactional
     public Order save(CreateOrderCommand createOrderCommand) {
         validateOrderCommand(createOrderCommand);
-        validateAmounts(createOrderCommand);
-
         Order orderToSave = createOrder(createOrderCommand);
-
         validateOrderDomain(orderToSave);
+
         OrderEntity orderEntity = orderRepository.saveOrder(orderToSave);
         orderRepository.saveOrderItems(orderToSave.getOrderItems(), orderEntity.getId());
         Optional<OrderEntity> order = orderRepository.findById(orderEntity.getId());
@@ -62,21 +55,6 @@ public class OrderServiceImpl implements  OrderService {
         Set<ConstraintViolation<CreateOrderCommand>> createOrderCommandViolations = validator.validate(createOrderCommand);
         if (!createOrderCommandViolations.isEmpty()) {
             throw new InvalidCreateOrderCommandException(createOrderCommandViolations);
-        }
-    }
-
-    private void validateAmounts(CreateOrderCommand createOrderCommand) {
-        BigDecimal total = BigDecimal.ZERO;
-        for (CreateOrderItemCommand item : createOrderCommand.getOrderItems()) {
-            BigDecimal lineTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-            if (lineTotal.compareTo(MAX_AMOUNT) > 0) {
-                throw new InvalidOrderAmountException("Line total", lineTotal, MAX_AMOUNT);
-            }
-            total = total.add(lineTotal);
-
-            if (total.compareTo(MAX_AMOUNT) > 0) {
-                throw new InvalidOrderAmountException("Total amount" ,total, MAX_AMOUNT);
-            }
         }
     }
 
