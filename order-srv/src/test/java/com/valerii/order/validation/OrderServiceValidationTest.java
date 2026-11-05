@@ -1,8 +1,8 @@
 package com.valerii.order.validation;
 
 import com.valerii.order.config.TestcontainersConfiguration;
-import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
+import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
@@ -152,15 +152,38 @@ public class OrderServiceValidationTest {
     }
 
     @Test
-    void shouldThrowException_WhenTotalAmountMoreThanAllowed() {
+    void shouldReject_whenTotalAmountExceedsNumericPrecision() {
         Long customerId = 201L;
         String currency = "CNY";
         CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
-                List.of(getCreateOrderItemCommand("Bugatti veyron", 10000, new BigDecimal("3870658619.06")),
-                        getCreateOrderItemCommand("Bugatti divo", 10000, new  BigDecimal("4070658619.96"))));
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 1, new BigDecimal("6000000000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new  BigDecimal("6000000000000.00"))));
 
         Long before = getCountOrdersByCustomerId(customerId);
-        assertThrows(DomainInvariantViolationException.class, () -> orderService.save(createInvalidOrderCommand));
+        InvalidOrderAmountException exception =
+                assertThrows(InvalidOrderAmountException.class, () -> orderService.save(createInvalidOrderCommand));
+        String expectedMessage = "Total amount 12000000000000.00 exceeds maximum allowed 9999999999999.99";
+        assertEquals(expectedMessage, exception.getMessage());
+
+        Long after = getCountOrdersByCustomerId(customerId);
+
+        assertEquals(before, after);
+    }
+
+    @Test
+    void shouldReject_whenLineTotalExceedsNumericPrecision() {
+        Long customerId = 201L;
+        String currency = "CNY";
+        CreateOrderCommand createInvalidOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Bugatti veyron", 100000, new BigDecimal("600000000.00")),
+                        getCreateOrderItemCommand("Bugatti divo", 1, new  BigDecimal("600000000.00"))));
+
+        Long before = getCountOrdersByCustomerId(customerId);
+        InvalidOrderAmountException exception =
+                assertThrows(InvalidOrderAmountException.class, () -> orderService.save(createInvalidOrderCommand));
+        String expectedMessage = "Line total 60000000000000.00 exceeds maximum allowed 9999999999999.99";
+        assertEquals(expectedMessage, exception.getMessage());
+
         Long after = getCountOrdersByCustomerId(customerId);
 
         assertEquals(before, after);

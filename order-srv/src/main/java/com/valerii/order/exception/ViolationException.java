@@ -18,6 +18,10 @@ public class ViolationException extends RuntimeException {
         this.errors = errors;
     }
 
+    public Map<String, String> getErrors() {
+        return Collections.unmodifiableMap(errors);
+    }
+
     private static LinkedHashMap<String, String> toErrors(Set<? extends ConstraintViolation<?>> violations) {
         return violations.stream()
                 .sorted(Comparator.comparing(v -> v.getPropertyPath().toString()))

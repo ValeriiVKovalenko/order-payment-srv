@@ -25,7 +25,7 @@ public class Order {
 
     @NotNull(message = "Total amount must not be null")
     @Min(value = 0, message = "Total amount must not be negative")
-    @Digits(fraction = 2, integer = 13, message = "Total amount must have no more than two decimal places")
+    @Digits(fraction = 2, integer = 13, message = "Total amount must fit NUMERIC(15,2): at most 13 integer digits and 2 decimal places")
     private final BigDecimal totalAmount;
 
     @NotNull(message = "Currency must not be null")

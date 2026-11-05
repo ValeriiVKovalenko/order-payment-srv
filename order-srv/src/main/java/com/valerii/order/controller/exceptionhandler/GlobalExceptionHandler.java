@@ -2,6 +2,7 @@ package com.valerii.order.controller.exceptionhandler;
 
 import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidCreateOrderCommandException;
+import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.response.api.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,7 +51,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponseDto> handleInvalidDomainInvariantViolationException(DomainInvariantViolationException ex,
                                                                                         HttpServletRequest request) {
         log.error("Domain invariant violated: {}", ex.getMessage(), ex);
-        return  build(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred. Please try again later.", request);
+        return  build(HttpStatus.BAD_REQUEST, "An unexpected error occurred. Please try again later.", request);
+    }
+
+    @ExceptionHandler(InvalidOrderAmountException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidOrderAmountException(InvalidOrderAmountException ex,
+                                                                                              HttpServletRequest request) {
+        log.warn("Invalid order amount: {}", ex.getMessage());
+        return  build(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {
