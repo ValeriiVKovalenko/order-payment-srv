@@ -403,13 +403,11 @@ public class OrderControllerTest {
         int size = 20;
 
         List<OrderSummaryDto> orderList = getOrderList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3);
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
 
         when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
 
-        mockMvc.perform(get("/api/v1/orders")
-                        .param("page", "0")
-                        .param("size", "20"))
+        mockMvc.perform(get("/api/v1/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(size))
                 .andExpect(jsonPath("$.page").value(page))
@@ -441,12 +439,57 @@ public class OrderControllerTest {
     }
 
     @Test
+    void findAll_shouldReturnOrderList_whenPageHasMaxValue() throws Exception {
+        int page = Integer.MAX_VALUE;
+        int size = 3;
+
+        List<OrderSummaryDto> orderList = getOrderList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
+
+        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "2147483647")
+                        .param("size", "3"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(size))
+                .andExpect(jsonPath("$.page").value(page))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.content", hasSize(3)))
+
+                .andExpect(jsonPath("$.content[0].id").value(100L))
+                .andExpect(jsonPath("$.content[0].currency").value("USD"))
+                .andExpect(jsonPath("$.content[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("53.26")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-26T23:28:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-10-26T23:28:00Z"))
+
+                .andExpect(jsonPath("$.content[1].id").value(101L))
+                .andExpect(jsonPath("$.content[1].currency").value("USD"))
+                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("62.9")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-10-26T22:28:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-10-26T22:28:00Z"))
+
+                .andExpect(jsonPath("$.content[2].id").value(102L))
+                .andExpect(jsonPath("$.content[2].currency").value("USD"))
+                .andExpect(jsonPath("$.content[2].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("41.98")))
+                .andExpect(jsonPath("$.content[2].createdAt").value("2026-10-26T21:28:00Z"))
+                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-10-26T21:28:00Z"));
+    }
+
+
+    @Test
     void findAll_shouldReturnOrderList_whenParamsAreSet() throws Exception {
         int page = 0;
         int size = 3;
 
         List<OrderSummaryDto> orderList = getOrderList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3);
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
 
         when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
 

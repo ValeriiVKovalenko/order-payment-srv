@@ -103,7 +103,7 @@ public class OrderServiceTest {
         int page = 0;
         int size = 2;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        int totalElements = 3;
+        Long totalElements = 3L;
         when(orderRepository.findOrderTotalElements()).thenReturn(totalElements);
 
         List<OrderEntity> orderEntities = getOrderEntityList();
@@ -113,7 +113,7 @@ public class OrderServiceTest {
         List<OrderSummaryDto> orders = getOrderList();
         when(orderMapper.toDomainList(orderEntities)).thenReturn(orders);
 
-        int totalPages = 2;
+        Long totalPages = 2L;
         boolean hasNext = true;
         boolean hasPrevious = false;
 

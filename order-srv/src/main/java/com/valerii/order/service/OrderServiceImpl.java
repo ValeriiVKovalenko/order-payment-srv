@@ -72,7 +72,7 @@ public class OrderServiceImpl implements  OrderService {
     @Override
     public PageResponseDto<OrderSummaryDto> findAll(Integer page, Integer size) {
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        Integer totalElements = orderRepository.findOrderTotalElements();
+        Long totalElements = orderRepository.findOrderTotalElements();
         List<OrderEntity> orders =
                 orderRepository.findAll(pagingParams.getSize(), pagingParams.getOffset());
         List<OrderSummaryDto> domainOrderList = orderMapper.toDomainList(orders);

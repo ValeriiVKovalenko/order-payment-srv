@@ -174,7 +174,7 @@ public class OrderRepositoryIntegrationTest {
     @Test
     @Sql("/sql/order/orders-50.sql")
     void count_shouldReturnTotalNumberOfOrders() {
-        Integer total = orderRepository.findOrderTotalElements();
+        Long total = orderRepository.findOrderTotalElements();
 
         assertThat(total).isEqualTo(50);
     }

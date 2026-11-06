@@ -15,7 +15,7 @@ public interface OrderRepository {
                         Long orderId);
     Optional<OrderEntity> findById(Long id);
 
-    List<OrderEntity> findAll(Integer size, Integer offset);
+    List<OrderEntity> findAll(Integer size, Long offset);
 
-    Integer findOrderTotalElements();
+    Long findOrderTotalElements();
 }

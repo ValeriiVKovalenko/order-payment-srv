@@ -58,7 +58,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    public List<OrderEntity> findAll(Integer size, Integer offset) {
+    public List<OrderEntity> findAll(Integer size, Long offset) {
         String sql = """
                 SELECT id,
                        customer_id,
@@ -78,11 +78,11 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    public Integer findOrderTotalElements() {
+    public Long findOrderTotalElements() {
         String sql = """
                 SELECT count(*) FROM orders
                 """;
-        return jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Integer.class);
+        return jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Long.class);
     }
 
     @Override

@@ -12,7 +12,7 @@ public class PageRequestParamDto {
     private final Integer page;
     private final Integer size;
 
-    public Integer getOffset() {
-        return page * size;
+    public Long getOffset() {
+        return (long) page * size;
     }
 }

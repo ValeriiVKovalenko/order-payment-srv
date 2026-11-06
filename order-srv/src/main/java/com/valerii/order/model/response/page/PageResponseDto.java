@@ -13,14 +13,14 @@ public class PageResponseDto<T> {
 
     private final Integer size;
     private final Integer page;
-    private final Integer totalElements;
-    private final Integer totalPages;
+    private final Long totalElements;
+    private final Long totalPages;
     private final Boolean hasNext;
     private final Boolean hasPrevious;
-    private final List<?> content;
+    private final List<T> content;
 
-    public static <T> PageResponseDto<T> of(List<T> content, Integer size, Integer page, Integer totalElements) {
-        int totalPages = (totalElements + size - 1) / size;
+    public static <T> PageResponseDto<T> of(List<T> content, Integer size, Integer page, Long totalElements) {
+        Long totalPages = (totalElements + size - 1) / size;
 
         return PageResponseDto.<T>builder()
                 .content(content)
@@ -28,7 +28,7 @@ public class PageResponseDto<T> {
                 .page(page)
                 .totalElements(totalElements)
                 .totalPages(totalPages)
-                .hasNext(page + 1 <  totalPages)
+                .hasNext(page < totalPages - 1)
                 .hasPrevious(page > 0)
                 .build();
     }
