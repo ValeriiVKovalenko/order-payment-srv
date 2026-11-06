@@ -6,18 +6,22 @@ import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
+import com.valerii.order.model.request.PageRequestParamDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest()
@@ -125,6 +129,91 @@ public class OrderRepositoryIntegrationTest {
         assertEquals(orderItemCoffee.getQuantity(), coffeeOrderItemEntity.getQuantity());
         assertEquals(0, orderItemCoffee.getLineTotal().compareTo(coffeeOrderItemEntity.getLineTotal()));
         assertEquals(orderEntityWithId.getId(), coffeeOrderItemEntity.getOrderId());
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findALL_shouldReturnOrderWithFirstPage() {
+        Integer page = 0;
+        Integer size = 10;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(10)
+                .extracting(OrderEntity::getId)
+                .containsExactly(50L, 49L, 48L, 47L, 46L, 45L, 44L, 43L, 42L, 41L);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findALL_shouldReturnOrderWithSecondPage() {
+        Integer page = 1;
+        Integer size = 10;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(10)
+                .extracting(OrderEntity::getId)
+                .containsExactly(40L, 39L, 38L, 37L, 36L, 35L, 34L, 33L, 32L, 31L);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findALL_shouldReturnOrderOrderByCreatedAt() {
+        Integer page = 0;
+        Integer size = 50;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(50);
+
+        assertThat(orders).extracting(OrderEntity::getCreatedAt)
+                .isSortedAccordingTo(Comparator.reverseOrder());
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void count_shouldReturnTotalNumberOfOrders() {
+        Integer total = orderRepository.findOrderTotalElements();
+
+        assertThat(total).isEqualTo(50);
+    }
+
+    @Test
+    void findALL_shouldReturnEmptyList() {
+        Integer page = 0;
+        Integer size = 50;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).isEmpty();
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnEmptyListWhenPageIsOutOfRange() {
+        int page = 100;
+        int size = 10;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).isEmpty();
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnLastNonEmptyPage() {
+        int page = 4;
+        int size = 10;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(10);
+        assertThat(orders)
+                .extracting(OrderEntity::getId)
+                .containsExactly(10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L, 1L);
     }
 }
 

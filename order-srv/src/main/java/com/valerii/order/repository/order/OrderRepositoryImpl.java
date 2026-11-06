@@ -58,6 +58,34 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
+    public List<OrderEntity> findAll(Integer size, Integer offset) {
+        String sql = """
+                SELECT id,
+                       customer_id,
+                       status,
+                       total_amount,
+                       currency,
+                       created_at,
+                       updated_at
+                FROM orders
+                ORDER BY created_at DESC, id DESC
+                LIMIT :size OFFSET :offset
+                """;
+        MapSqlParameterSource params = new MapSqlParameterSource("size", size)
+                .addValue("offset", offset);
+
+        return jdbcTemplate.query(sql, params, ORDER_ROW_MAPPER);
+    }
+
+    @Override
+    public Integer findOrderTotalElements() {
+        String sql = """
+                SELECT count(*) FROM orders
+                """;
+        return jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Integer.class);
+    }
+
+    @Override
     public OrderEntity saveOrder(Order order) {
         String sql = """
                 INSERT INTO orders (customer_id, status, total_amount, currency)
