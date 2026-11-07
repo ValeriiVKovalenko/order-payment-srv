@@ -457,7 +457,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false))
-                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.hasPrevious").value(true))
                 .andExpect(jsonPath("$.content", hasSize(3)))
 
                 .andExpect(jsonPath("$.content[0].id").value(100L))

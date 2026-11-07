@@ -20,7 +20,7 @@ public class PageResponseDto<T> {
     private final List<T> content;
 
     public static <T> PageResponseDto<T> of(List<T> content, Integer size, Integer page, Long totalElements) {
-        Long totalPages = (totalElements + size - 1) / size;
+        long totalPages = (totalElements + size - 1) / size;
 
         return PageResponseDto.<T>builder()
                 .content(content)
