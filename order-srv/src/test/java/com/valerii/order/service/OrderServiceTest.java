@@ -9,6 +9,7 @@ import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
+import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
@@ -104,10 +105,11 @@ public class OrderServiceTest {
         int size = 2;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
         Long totalElements = 3L;
-        when(orderRepository.findOrderTotalElements()).thenReturn(totalElements);
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
+        when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
 
         List<OrderEntity> orderEntities = getOrderEntityList();
-        when(orderRepository.findAll(pagingParams.getSize(), pagingParams.getOffset()))
+        when(orderRepository.findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset()))
                 .thenReturn(orderEntities);
 
         List<OrderSummaryDto> orders = getOrderList();
@@ -118,7 +120,7 @@ public class OrderServiceTest {
         boolean hasPrevious = false;
 
         //when
-        PageResponseDto<OrderSummaryDto> result = orderService.findAll(page, size);
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilter, page, size);
 
         //then
         assertNotNull(result);
@@ -132,8 +134,8 @@ public class OrderServiceTest {
         assertFalse(result.getContent().isEmpty());
         assertThat(result.getContent()).hasSize(2);
 
-        verify(orderRepository).findOrderTotalElements();
-        verify(orderRepository).findAll(pagingParams.getSize(), pagingParams.getOffset());
+        verify(orderRepository).findOrderTotalElements(orderFilter);
+        verify(orderRepository).findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset());
         verify(orderMapper).toSummaryDtoList(orderEntities);
     }
 
@@ -239,6 +241,13 @@ public class OrderServiceTest {
                 .status(status)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .build();
+    }
+
+    private OrderFilterRequestDto getOrderFilter(Long customerId, String status) {
+        return OrderFilterRequestDto.builder()
+                .customerId(customerId)
+                .status(status)
                 .build();
     }
 }

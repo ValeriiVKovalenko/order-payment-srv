@@ -1,6 +1,6 @@
 package com.valerii.order.controller;
 
-import com.valerii.order.controller.exceptionhandler.GlobalExceptionHandler;
+import com.valerii.order.exception.exceptionhandler.GlobalExceptionHandler;
 import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.exception.OrderNotFoundException;
@@ -405,7 +405,7 @@ public class OrderControllerTest {
         List<OrderSummaryDto> orderList = getOrderList();
         PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
 
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        when(orderService.findAll(, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders"))
                 .andExpect(status().isOk())
@@ -446,7 +446,7 @@ public class OrderControllerTest {
         List<OrderSummaryDto> orderList = emptyList();
         PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 0L);
 
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        when(orderService.findAll(, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders")
                         .param("page", "2147483647")
@@ -469,7 +469,7 @@ public class OrderControllerTest {
         List<OrderSummaryDto> orderList = getOrderList();
         PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
 
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        when(orderService.findAll(, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders")
                         .param("page", "0")

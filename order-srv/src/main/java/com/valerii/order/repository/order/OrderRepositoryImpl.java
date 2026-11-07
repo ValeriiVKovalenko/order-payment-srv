@@ -3,6 +3,7 @@ package com.valerii.order.repository.order;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.repository.extractor.OrderResultSetExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -12,6 +13,7 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +21,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class OrderRepositoryImpl implements OrderRepository {
 
+    private static final String ORDERS_FROM = "FROM orders";
     public static final RowMapper<OrderEntity> ORDER_ROW_MAPPER = (rs, rowNum) -> {
         return OrderEntity.builder()
                 .id(rs.getLong("id"))
@@ -58,31 +61,30 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    public List<OrderEntity> findAll(Integer size, Long offset) {
-        String sql = """
-                SELECT id,
-                       customer_id,
-                       status,
-                       total_amount,
-                       currency,
-                       created_at,
-                       updated_at
-                FROM orders
-                ORDER BY created_at DESC, id DESC
-                LIMIT :size OFFSET :offset
-                """;
+    public List<OrderEntity> findAll(OrderFilterRequestDto filter, Integer size, Long offset) {
         MapSqlParameterSource params = new MapSqlParameterSource("size", size)
                 .addValue("offset", offset);
+
+        String sql = "SELECT id, "
+                + "customer_id, "
+                + "status,"
+                + "total_amount,"
+                + "currency,"
+                + "created_at,"
+                + "updated_at "
+                + ORDERS_FROM + buildWhereClause(filter, params)
+                + " ORDER BY created_at DESC, id DESC "
+                + "LIMIT :size OFFSET :offset";
 
         return jdbcTemplate.query(sql, params, ORDER_ROW_MAPPER);
     }
 
     @Override
-    public Long findOrderTotalElements() {
-        String sql = """
-                SELECT count(*) FROM orders
-                """;
-        return jdbcTemplate.queryForObject(sql, new MapSqlParameterSource(), Long.class);
+    public Long findOrderTotalElements(OrderFilterRequestDto filter) {
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        String sql = "SELECT count(*) " + ORDERS_FROM + buildWhereClause(filter, params);
+
+        return jdbcTemplate.queryForObject(sql, params, Long.class);
     }
 
     @Override
@@ -115,5 +117,20 @@ public class OrderRepositoryImpl implements OrderRepository {
                        .addValue("lineTotal", item.getLineTotal()))
                .toArray(SqlParameterSource[]::new);
        jdbcTemplate.batchUpdate(sql, batchParams);
+    }
+
+    private String buildWhereClause(OrderFilterRequestDto filter, MapSqlParameterSource params) {
+        List<String> conditions = new ArrayList<>();
+        if (filter.getCustomerId() != null) {
+            conditions.add("customer_id = :customerId");
+            params.addValue("customerId", filter.getCustomerId());
+        }
+
+        if (filter.getStatus() != null) {
+            conditions.add("status = :status");
+            params.addValue("status", filter.getStatus());
+        }
+
+        return conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
     }
 }
