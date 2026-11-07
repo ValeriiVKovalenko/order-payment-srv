@@ -439,12 +439,12 @@ public class OrderControllerTest {
     }
 
     @Test
-    void findAll_shouldReturnOrderList_whenPageHasMaxValue() throws Exception {
+    void findAll_shouldReturnEmptyPage_whenPageExceedsTotalPages() throws Exception {
         int page = Integer.MAX_VALUE;
         int size = 3;
 
-        List<OrderSummaryDto> orderList = getOrderList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
+        List<OrderSummaryDto> orderList = emptyList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 0L);
 
         when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
 
@@ -454,34 +454,12 @@ public class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(size))
                 .andExpect(jsonPath("$.page").value(page))
-                .andExpect(jsonPath("$.totalElements").value(3))
-                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
                 .andExpect(jsonPath("$.hasNext").value(false))
                 .andExpect(jsonPath("$.hasPrevious").value(true))
-                .andExpect(jsonPath("$.content", hasSize(3)))
-
-                .andExpect(jsonPath("$.content[0].id").value(100L))
-                .andExpect(jsonPath("$.content[0].currency").value("USD"))
-                .andExpect(jsonPath("$.content[0].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("53.26")))
-                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-26T23:28:00Z"))
-                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-10-26T23:28:00Z"))
-
-                .andExpect(jsonPath("$.content[1].id").value(101L))
-                .andExpect(jsonPath("$.content[1].currency").value("USD"))
-                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("62.9")))
-                .andExpect(jsonPath("$.content[1].createdAt").value("2026-10-26T22:28:00Z"))
-                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-10-26T22:28:00Z"))
-
-                .andExpect(jsonPath("$.content[2].id").value(102L))
-                .andExpect(jsonPath("$.content[2].currency").value("USD"))
-                .andExpect(jsonPath("$.content[2].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("41.98")))
-                .andExpect(jsonPath("$.content[2].createdAt").value("2026-10-26T21:28:00Z"))
-                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-10-26T21:28:00Z"));
+                .andExpect(jsonPath("$.content", hasSize(0)));
     }
-
 
     @Test
     void findAll_shouldReturnOrderList_whenParamsAreSet() throws Exception {

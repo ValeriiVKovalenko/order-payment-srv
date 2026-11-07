@@ -111,7 +111,7 @@ public class OrderServiceTest {
                 .thenReturn(orderEntities);
 
         List<OrderSummaryDto> orders = getOrderList();
-        when(orderMapper.toDomainList(orderEntities)).thenReturn(orders);
+        when(orderMapper.toSummaryDtoList(orderEntities)).thenReturn(orders);
 
         Long totalPages = 2L;
         boolean hasNext = true;
@@ -134,7 +134,7 @@ public class OrderServiceTest {
 
         verify(orderRepository).findOrderTotalElements();
         verify(orderRepository).findAll(pagingParams.getSize(), pagingParams.getOffset());
-        verify(orderMapper).toDomainList(orderEntities);
+        verify(orderMapper).toSummaryDtoList(orderEntities);
     }
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,

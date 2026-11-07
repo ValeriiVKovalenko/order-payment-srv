@@ -75,7 +75,7 @@ public class OrderServiceImpl implements  OrderService {
         Long totalElements = orderRepository.findOrderTotalElements();
         List<OrderEntity> orders =
                 orderRepository.findAll(pagingParams.getSize(), pagingParams.getOffset());
-        List<OrderSummaryDto> domainOrderList = orderMapper.toDomainList(orders);
+        List<OrderSummaryDto> domainOrderList = orderMapper.toSummaryDtoList(orders);
 
         return PageResponseDto.of(domainOrderList, size, page, totalElements);
     }

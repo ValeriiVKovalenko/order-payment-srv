@@ -9,5 +9,6 @@ import java.util.List;
 public interface OrderMapper {
     Order toDomain(OrderEntity order);
 
-    List<OrderSummaryDto> toDomainList(List<OrderEntity> orders);
+    List<OrderSummaryDto> toSummaryDtoList(List<OrderEntity> orders);
+
 }

@@ -31,7 +31,7 @@ public class OrderMapperImpl implements OrderMapper {
     }
 
     @Override
-    public List<OrderSummaryDto> toDomainList(List<OrderEntity> orders) {
+    public List<OrderSummaryDto> toSummaryDtoList(List<OrderEntity> orders) {
         return orders.stream()
                 .map(this::toOrderDomain)
                 .toList();
