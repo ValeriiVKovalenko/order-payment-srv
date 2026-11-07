@@ -2,6 +2,7 @@ package com.valerii.order.mapper;
 
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
+import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
@@ -29,6 +30,13 @@ public class OrderMapperImpl implements OrderMapper {
                  .build();
     }
 
+    @Override
+    public List<OrderSummaryDto> toSummaryDtoList(List<OrderEntity> orders) {
+        return orders.stream()
+                .map(this::toOrderDomain)
+                .toList();
+    }
+
     private OrderItem toOrderItemDomain(OrderItemEntity item) {
         return OrderItem.builder()
                 .id(item.getId())
@@ -37,6 +45,18 @@ public class OrderMapperImpl implements OrderMapper {
                 .quantity(item.getQuantity())
                 .unitPrice(item.getUnitPrice())
                 .lineTotal(item.getLineTotal())
+                .build();
+    }
+
+    private OrderSummaryDto toOrderDomain(OrderEntity order) {
+        return OrderSummaryDto.builder()
+                .id(order.getId())
+                .customerId(order.getCustomerId())
+                .currency(order.getCurrency())
+                .totalAmount(order.getTotalAmount())
+                .status(OrderStatus.valueOf(order.getStatus()))
+                .createdAt(order.getCreatedAt())
+                .updatedAt(order.getUpdatedAt())
                 .build();
     }
 }

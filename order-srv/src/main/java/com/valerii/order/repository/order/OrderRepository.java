@@ -14,4 +14,8 @@ public interface OrderRepository {
     void saveOrderItems(List<OrderItem> orderItems,
                         Long orderId);
     Optional<OrderEntity> findById(Long id);
+
+    List<OrderEntity> findAll(Integer size, Long offset);
+
+    Long findOrderTotalElements();
 }

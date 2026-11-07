@@ -7,11 +7,13 @@ import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.response.api.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.stream.Collectors;
@@ -59,6 +61,15 @@ public class GlobalExceptionHandler {
                                                                                               HttpServletRequest request) {
         log.warn("Invalid order amount: {}", ex.getMessage());
         return  build(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleHandlerMethodValidation(HandlerMethodValidationException ex,
+                                                                             HttpServletRequest request) {
+        String errorMessage = ex.getAllErrors().stream()
+                .map(MessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, errorMessage, request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {

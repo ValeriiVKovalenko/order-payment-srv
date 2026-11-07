@@ -6,7 +6,10 @@ import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.request.PageRequestParamDto;
+import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -63,5 +67,16 @@ public class OrderServiceImpl implements  OrderService {
         OrderEntity orderEntity = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException(String.format("Order with id `%d` not found", orderId)));
         return orderMapper.toDomain(orderEntity);
+    }
+
+    @Override
+    public PageResponseDto<OrderSummaryDto> findAll(Integer page, Integer size) {
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        Long totalElements = orderRepository.findOrderTotalElements();
+        List<OrderEntity> orders =
+                orderRepository.findAll(pagingParams.getSize(), pagingParams.getOffset());
+        List<OrderSummaryDto> domainOrderList = orderMapper.toSummaryDtoList(orders);
+
+        return PageResponseDto.of(domainOrderList, size, page, totalElements);
     }
 }
