@@ -7,6 +7,7 @@ import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.enums.OrderStatus;
@@ -76,14 +77,16 @@ public class OrderServiceImpl implements  OrderService {
     public PageResponseDto<OrderSummaryDto> findAll(OrderFilterRequestDto filter, Integer page, Integer size) {
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
 
-        if (filter.getStatus() != null) {
-            OrderStatus.fromString(filter.getStatus())
-                    .orElseThrow(() -> new InvalidOrderStatusException(filter.getStatus()));
-        }
+        OrderStatus status = filter.getStatus() == null
+                ? null
+                : OrderStatus.fromString(filter.getStatus())
+                .orElseThrow(() -> new InvalidOrderStatusException(filter.getStatus()));
 
-        Long totalElements = orderRepository.findOrderTotalElements(filter);
+        OrderFilterDto orderFilter = new OrderFilterDto(filter.getCustomerId(), status);
+
+        Long totalElements = orderRepository.findOrderTotalElements(orderFilter);
         List<OrderEntity> orders =
-                orderRepository.findAll(filter, pagingParams.getSize(), pagingParams.getOffset());
+                orderRepository.findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset());
         List<OrderSummaryDto> domainOrderList = orderMapper.toSummaryDtoList(orders);
 
         return PageResponseDto.of(domainOrderList, size, page, totalElements);

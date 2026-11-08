@@ -1,9 +1,9 @@
 package com.valerii.order.repository.order;
 
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
-import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.repository.extractor.OrderResultSetExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
@@ -61,7 +61,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    public List<OrderEntity> findAll(OrderFilterRequestDto filter, Integer size, Long offset) {
+    public List<OrderEntity> findAll(OrderFilterDto filter, Integer size, Long offset) {
         MapSqlParameterSource params = new MapSqlParameterSource("size", size)
                 .addValue("offset", offset);
 
@@ -80,7 +80,7 @@ public class OrderRepositoryImpl implements OrderRepository {
     }
 
     @Override
-    public Long findOrderTotalElements(OrderFilterRequestDto filter) {
+    public Long findOrderTotalElements(OrderFilterDto filter) {
         MapSqlParameterSource params = new MapSqlParameterSource();
         String sql = "SELECT count(*) " + ORDERS_FROM + buildWhereClause(filter, params);
 
@@ -119,16 +119,16 @@ public class OrderRepositoryImpl implements OrderRepository {
        jdbcTemplate.batchUpdate(sql, batchParams);
     }
 
-    private String buildWhereClause(OrderFilterRequestDto filter, MapSqlParameterSource params) {
+    private String buildWhereClause(OrderFilterDto filter, MapSqlParameterSource params) {
         List<String> conditions = new ArrayList<>();
         if (filter.getCustomerId() != null) {
             conditions.add("customer_id = :customerId");
             params.addValue("customerId", filter.getCustomerId());
         }
 
-        if (filter.getStatus() != null) {
+        if (filter.getOrderStatus() != null) {
             conditions.add("status = :status");
-            params.addValue("status", filter.getStatus());
+            params.addValue("status", filter.getOrderStatus().name());
         }
 
         return conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);

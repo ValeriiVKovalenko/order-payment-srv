@@ -3,6 +3,7 @@ package com.valerii.order.service;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
@@ -105,7 +106,8 @@ public class OrderServiceTest {
         int size = 2;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
         Long totalElements = 3L;
-        OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
+
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
         when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
 
         List<OrderEntity> orderEntities = getOrderEntityList();
@@ -120,7 +122,8 @@ public class OrderServiceTest {
         boolean hasPrevious = false;
 
         //when
-        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilter, page, size);
+        OrderFilterRequestDto filter = getOrderFilterRequest(null, null );
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(filter, page, size);
 
         //then
         assertNotNull(result);
@@ -144,10 +147,10 @@ public class OrderServiceTest {
         //given
         int page = 0;
         int size = 2;
-        String status = "CREATED";
+        OrderStatus status = OrderStatus.CREATED;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
         Long totalElements = 3L;
-        OrderFilterRequestDto orderFilter = getOrderFilter(null, status);
+        OrderFilterDto orderFilter = getOrderFilter(null, status);
         when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
 
         List<OrderEntity> orderEntities = getOrderEntityList();
@@ -162,7 +165,8 @@ public class OrderServiceTest {
         boolean hasPrevious = false;
 
         //when
-        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilter, page, size);
+        OrderFilterRequestDto orderFilterRequest = getOrderFilterRequest(null, status.name());
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilterRequest, page, size);
 
         //then
         assertNotNull(result);
@@ -286,10 +290,17 @@ public class OrderServiceTest {
                 .build();
     }
 
-    private OrderFilterRequestDto getOrderFilter(Long customerId, String status) {
-        return OrderFilterRequestDto.builder()
+    private OrderFilterDto getOrderFilter(Long customerId, OrderStatus status) {
+        return OrderFilterDto.builder()
                 .customerId(customerId)
-                .status(status)
+                .orderStatus(status)
+                .build();
+    }
+
+    private OrderFilterRequestDto getOrderFilterRequest(Long customerId, String status) {
+        return OrderFilterRequestDto.builder()
+                .customerId(null)
+                .status(null)
                 .build();
     }
 }
