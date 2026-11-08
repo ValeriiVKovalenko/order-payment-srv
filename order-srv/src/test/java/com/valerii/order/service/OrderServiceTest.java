@@ -139,6 +139,48 @@ public class OrderServiceTest {
         verify(orderMapper).toSummaryDtoList(orderEntities);
     }
 
+    @Test
+    void findALL_shouldReturnOrdersByFilter() {
+        //given
+        int page = 0;
+        int size = 2;
+        String status = "CREATED";
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        Long totalElements = 3L;
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, status);
+        when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
+
+        List<OrderEntity> orderEntities = getOrderEntityList();
+        when(orderRepository.findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset()))
+                .thenReturn(orderEntities);
+
+        List<OrderSummaryDto> orders = getOrderList();
+        when(orderMapper.toSummaryDtoList(orderEntities)).thenReturn(orders);
+
+        Long totalPages = 2L;
+        boolean hasNext = true;
+        boolean hasPrevious = false;
+
+        //when
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilter, page, size);
+
+        //then
+        assertNotNull(result);
+        assertEquals(page, result.getPage());
+        assertEquals(size, result.getSize());
+        assertEquals(totalElements, result.getTotalElements());
+        assertEquals(totalPages, result.getTotalPages());
+        assertEquals(hasNext, result.getHasNext());
+        assertEquals(hasPrevious, result.getHasPrevious());
+        assertNotNull(result.getContent());
+        assertFalse(result.getContent().isEmpty());
+        assertThat(result.getContent()).hasSize(2);
+
+        verify(orderRepository).findOrderTotalElements(orderFilter);
+        verify(orderRepository).findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset());
+        verify(orderMapper).toSummaryDtoList(orderEntities);
+    }
+
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
                                           BigDecimal unitPrice, BigDecimal lineTotal) {
         return OrderItemEntity.builder()
