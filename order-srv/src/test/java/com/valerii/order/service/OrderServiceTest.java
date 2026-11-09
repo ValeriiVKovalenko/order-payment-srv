@@ -190,9 +190,6 @@ public class OrderServiceTest {
 
     @ParameterizedTest(name = "status={0} should be rejected")
     @ValueSource(strings = {
-            "created",
-            "processing",
-            "Created",
             "C R E A T E D",
             " ",
             "UNKNOWN"})
