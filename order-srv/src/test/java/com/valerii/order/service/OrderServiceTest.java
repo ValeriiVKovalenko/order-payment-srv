@@ -1,18 +1,23 @@
 package com.valerii.order.service;
 
+import com.valerii.order.exception.InvalidOrderStatusException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
+import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -104,10 +109,12 @@ public class OrderServiceTest {
         int size = 2;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
         Long totalElements = 3L;
-        when(orderRepository.findOrderTotalElements()).thenReturn(totalElements);
+
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
 
         List<OrderEntity> orderEntities = getOrderEntityList();
-        when(orderRepository.findAll(pagingParams.getSize(), pagingParams.getOffset()))
+        when(orderRepository.findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset()))
                 .thenReturn(orderEntities);
 
         List<OrderSummaryDto> orders = getOrderList();
@@ -118,7 +125,8 @@ public class OrderServiceTest {
         boolean hasPrevious = false;
 
         //when
-        PageResponseDto<OrderSummaryDto> result = orderService.findAll(page, size);
+        OrderFilterRequestDto filter = getOrderFilterRequest(null, null );
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(filter, page, size);
 
         //then
         assertNotNull(result);
@@ -132,10 +140,73 @@ public class OrderServiceTest {
         assertFalse(result.getContent().isEmpty());
         assertThat(result.getContent()).hasSize(2);
 
-        verify(orderRepository).findOrderTotalElements();
-        verify(orderRepository).findAll(pagingParams.getSize(), pagingParams.getOffset());
+        verify(orderRepository).findOrderTotalElements(orderFilter);
+        verify(orderRepository).findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset());
         verify(orderMapper).toSummaryDtoList(orderEntities);
     }
+
+    @Test
+    void findALL_shouldReturnOrdersByFilter() {
+        //given
+        int page = 0;
+        int size = 2;
+        OrderStatus status = OrderStatus.CREATED;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        Long totalElements = 3L;
+        OrderFilterDto orderFilter = getOrderFilter(null, status);
+        when(orderRepository.findOrderTotalElements(orderFilter)).thenReturn(totalElements);
+
+        List<OrderEntity> orderEntities = getOrderEntityList();
+        when(orderRepository.findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset()))
+                .thenReturn(orderEntities);
+
+        List<OrderSummaryDto> orders = getOrderList();
+        when(orderMapper.toSummaryDtoList(orderEntities)).thenReturn(orders);
+
+        Long totalPages = 2L;
+        boolean hasNext = true;
+        boolean hasPrevious = false;
+
+        //when
+        OrderFilterRequestDto orderFilterRequest = getOrderFilterRequest(null, status.name());
+        PageResponseDto<OrderSummaryDto> result = orderService.findAll(orderFilterRequest, page, size);
+
+        //then
+        assertNotNull(result);
+        assertEquals(page, result.getPage());
+        assertEquals(size, result.getSize());
+        assertEquals(totalElements, result.getTotalElements());
+        assertEquals(totalPages, result.getTotalPages());
+        assertEquals(hasNext, result.getHasNext());
+        assertEquals(hasPrevious, result.getHasPrevious());
+        assertNotNull(result.getContent());
+        assertFalse(result.getContent().isEmpty());
+        assertThat(result.getContent()).hasSize(2);
+
+        verify(orderRepository).findOrderTotalElements(orderFilter);
+        verify(orderRepository).findAll(orderFilter, pagingParams.getSize(), pagingParams.getOffset());
+        verify(orderMapper).toSummaryDtoList(orderEntities);
+    }
+
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {
+            "C R E A T E D",
+            " ",
+            "UNKNOWN"})
+    void findALL_shouldReturnInvalidOrderStatusException(String invalidStatus) {
+        //given
+        int page = 0;
+        int size = 2;
+       OrderFilterRequestDto filter = getOrderFilterRequest(null, invalidStatus);
+
+       //when
+        assertThatThrownBy(() -> orderService.findAll(filter, page, size))
+                .isInstanceOf(InvalidOrderStatusException.class)
+                .hasMessageContaining(invalidStatus);
+
+        verifyNoInteractions(orderRepository, orderMapper);
+    }
+
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
                                           BigDecimal unitPrice, BigDecimal lineTotal) {
@@ -239,6 +310,20 @@ public class OrderServiceTest {
                 .status(status)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
+                .build();
+    }
+
+    private OrderFilterDto getOrderFilter(Long customerId, OrderStatus status) {
+        return OrderFilterDto.builder()
+                .customerId(customerId)
+                .orderStatus(status)
+                .build();
+    }
+
+    private OrderFilterRequestDto getOrderFilterRequest(Long customerId, String status) {
+        return OrderFilterRequestDto.builder()
+                .customerId(customerId)
+                .status(status)
                 .build();
     }
 }

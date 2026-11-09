@@ -1,6 +1,7 @@
 package com.valerii.order.repository.order;
 
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 
@@ -15,7 +16,7 @@ public interface OrderRepository {
                         Long orderId);
     Optional<OrderEntity> findById(Long id);
 
-    List<OrderEntity> findAll(Integer size, Long offset);
+    List<OrderEntity> findAll(OrderFilterDto filter, Integer size, Long offset);
 
-    Long findOrderTotalElements();
+    Long findOrderTotalElements(OrderFilterDto filter);
 }

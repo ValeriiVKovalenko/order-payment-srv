@@ -6,6 +6,7 @@ import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.request.OrderRequestDto;
+import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.service.OrderService;
@@ -37,9 +38,15 @@ public class OrderController {
     public ResponseEntity<PageResponseDto<OrderSummaryDto>> getOrders(
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "page must be non-negative value") Integer page,
             @RequestParam(defaultValue = "20") @Min(value = 1, message = "size must be more than 0")
-            @Max(value = 100, message = "size must be less than 101") Integer size) {
+            @Max(value = 100, message = "size must be less than 101") Integer size,
+            @RequestParam(required = false) @Min(value = 1, message = "Customer id must be more than 0") Long customerId,
+            @RequestParam(required = false) String status) {
 
-        PageResponseDto<OrderSummaryDto> orders = orderService.findAll(page, size);
+        OrderFilterRequestDto filter = OrderFilterRequestDto.builder()
+                .customerId(customerId)
+                .status(status)
+                .build();
+        PageResponseDto<OrderSummaryDto> orders = orderService.findAll(filter, page, size);
         return ResponseEntity.ok(orders);
     }
 

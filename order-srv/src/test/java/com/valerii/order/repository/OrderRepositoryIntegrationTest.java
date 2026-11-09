@@ -2,6 +2,7 @@ package com.valerii.order.repository;
 
 import com.valerii.order.config.TestcontainersConfiguration;
 import com.valerii.order.model.Order;
+import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
@@ -20,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,26 +33,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OrderRepositoryIntegrationTest {
     @Autowired
     OrderRepository orderRepository;
-
-    private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
-                           List<OrderItem> orderItems) {
-        return Order.builder()
-                .customerId(customerId)
-                .currency(currency)
-                .totalAmount(totalAmount)
-                .status(status)
-                .orderItems(orderItems)
-                .build();
-    }
-
-    private OrderItem getOrderItem(String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
-        return OrderItem.builder()
-                .productName(productName)
-                .unitPrice(unitPrice)
-                .quantity(quantity)
-                .lineTotal(lineTotal)
-                .build();
-    }
 
     @Test
     void find_shouldReturnOptionalEmptyWhenOrderWithDifferentIdExists() {
@@ -137,7 +120,8 @@ public class OrderRepositoryIntegrationTest {
         Integer page = 0;
         Integer size = 10;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).hasSize(10)
                 .extracting(OrderEntity::getId)
@@ -150,7 +134,8 @@ public class OrderRepositoryIntegrationTest {
         Integer page = 1;
         Integer size = 10;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).hasSize(10)
                 .extracting(OrderEntity::getId)
@@ -163,7 +148,8 @@ public class OrderRepositoryIntegrationTest {
         Integer page = 0;
         Integer size = 50;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).hasSize(50);
 
@@ -174,9 +160,17 @@ public class OrderRepositoryIntegrationTest {
     @Test
     @Sql("/sql/order/orders-50.sql")
     void count_shouldReturnTotalNumberOfOrders() {
-        Long total = orderRepository.findOrderTotalElements();
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        Long total = orderRepository.findOrderTotalElements(orderFilter);
 
         assertThat(total).isEqualTo(50);
+    }
+
+    private OrderFilterDto getOrderFilter(Long customerId, OrderStatus status) {
+        return OrderFilterDto.builder()
+                .customerId(customerId)
+                .orderStatus(status)
+                .build();
     }
 
     @Test
@@ -184,7 +178,8 @@ public class OrderRepositoryIntegrationTest {
         Integer page = 0;
         Integer size = 50;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).isEmpty();
     }
@@ -195,8 +190,9 @@ public class OrderRepositoryIntegrationTest {
         int page = 100;
         int size = 10;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
 
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).isEmpty();
     }
@@ -208,12 +204,175 @@ public class OrderRepositoryIntegrationTest {
         int size = 10;
         PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
 
-        List<OrderEntity> orders = orderRepository.findAll(size, pagingParams.getOffset());
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).hasSize(10);
         assertThat(orders)
                 .extracting(OrderEntity::getId)
                 .containsExactly(10L, 9L, 8L, 7L, 6L, 5L, 4L, 3L, 2L, 1L);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnOrdersWithoutFilter() {
+        int page = 0;
+        int size = 20;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+        List<Long> expected = LongStream.rangeClosed(31, 50)
+                .boxed()
+                .sorted(Comparator.reverseOrder())
+                .toList();
+
+        OrderFilterDto orderFilter = getOrderFilter(null, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(20);
+        assertThat(orders)
+                .extracting(OrderEntity::getId)
+                .containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnOrdersWithFilterByStatus() {
+        int page = 0;
+        int size = 20;
+        OrderStatus status = OrderStatus.CREATED;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        OrderFilterDto orderFilter = getOrderFilter(null, status);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(12)
+                .isSortedAccordingTo(Comparator.comparing(OrderEntity::getCreatedAt)
+                        .reversed()
+                        .thenComparing(OrderEntity::getId, Comparator.reverseOrder()));
+        assertThat(orders)
+                .extracting(OrderEntity::getStatus)
+                .containsOnly(status.name());
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnOrdersWithFilterByCustomerId() {
+        int page = 0;
+        int size = 20;
+        Long customerId = 5L;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        OrderFilterDto orderFilter = getOrderFilter(customerId, null);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(10)
+                .isSortedAccordingTo(Comparator.comparing(OrderEntity::getCreatedAt)
+                        .reversed()
+                        .thenComparing(OrderEntity::getId, Comparator.reverseOrder()));
+        assertThat(orders)
+                .extracting(OrderEntity::getCustomerId)
+                .containsOnly(5L);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnOrdersWithFilterByStatusAndCustomerId() {
+        int page = 0;
+        int size = 20;
+        OrderStatus status = OrderStatus.CREATED;
+        Long customerId = 5L;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        OrderFilterDto orderFilter = getOrderFilter(customerId, status);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
+
+        assertThat(orders).hasSize(3)
+                .isSortedAccordingTo(Comparator.comparing(OrderEntity::getCreatedAt)
+                        .reversed()
+                        .thenComparing(OrderEntity::getId, Comparator.reverseOrder()));
+        assertThat(orders)
+                .extracting(OrderEntity::getCustomerId)
+                .containsOnly(5L);
+        assertThat(orders)
+                .extracting(OrderEntity::getStatus)
+                .containsOnly(status.name());
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void count_shouldReturnTotalNumberOfOrdersByFilter() {
+        OrderStatus status = OrderStatus.PROCESSING;
+        Long customerId = 3L;
+        OrderFilterDto orderFilter = getOrderFilter(customerId, status);
+        Long total = orderRepository.findOrderTotalElements(orderFilter);
+
+        assertThat(total).isEqualTo(2);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldReturnEmptyListByFilter() {
+        int page = 0;
+        int size = 20;
+        OrderStatus status = OrderStatus.CREATED;
+        Long customerId = 99L;
+        PageRequestParamDto pagingParams = new PageRequestParamDto(page, size);
+
+        OrderFilterDto orderFilter = getOrderFilter(customerId, status);
+        List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
+
+        assertThat(orders).isEmpty();
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldPaginateAllCreatedOrders_withoutGapsOrDuplicates() {
+        //given
+        OrderFilterDto filter = new OrderFilterDto(null, OrderStatus.CREATED);
+        int size = 5;
+        List<Long> expectedIds = List.of(4L, 8L, 12L, 16L, 20L, 24L, 28L, 32L, 36L, 40L, 44L, 48L);
+
+        //when
+        Long total = orderRepository.findOrderTotalElements(filter);
+        List<OrderEntity> page1 = orderRepository.findAll(filter, size, 0L);
+        List<OrderEntity> page2 = orderRepository.findAll(filter, size, 5L);
+        List<OrderEntity> page3 = orderRepository.findAll(filter, size, 10L);
+        List<OrderEntity> page4 = orderRepository.findAll(filter, size, 15L);
+
+        //then
+        assertThat(total).isEqualTo(12L);
+        assertThat(page1).hasSize(5);
+        assertThat(page2).hasSize(5);
+        assertThat(page3).hasSize(2);
+        assertThat(page4).isEmpty();
+
+        List<Long> collected = Stream.of(page1, page2, page3)
+                .flatMap(List::stream)
+                .map(OrderEntity::getId)
+                .toList();
+
+        assertThat(collected)
+                .doesNotHaveDuplicates()
+                .containsExactlyInAnyOrderElementsOf(expectedIds);
+    }
+
+    private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
+                           List<OrderItem> orderItems) {
+        return Order.builder()
+                .customerId(customerId)
+                .currency(currency)
+                .totalAmount(totalAmount)
+                .status(status)
+                .orderItems(orderItems)
+                .build();
+    }
+
+    private OrderItem getOrderItem(String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
+        return OrderItem.builder()
+                .productName(productName)
+                .unitPrice(unitPrice)
+                .quantity(quantity)
+                .lineTotal(lineTotal)
+                .build();
     }
 }
 

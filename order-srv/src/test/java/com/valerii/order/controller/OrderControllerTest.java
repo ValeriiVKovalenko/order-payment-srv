@@ -1,6 +1,7 @@
 package com.valerii.order.controller;
 
-import com.valerii.order.controller.exceptionhandler.GlobalExceptionHandler;
+import com.valerii.order.exception.InvalidOrderStatusException;
+import com.valerii.order.exception.exceptionhandler.GlobalExceptionHandler;
 import com.valerii.order.exception.DomainInvariantViolationException;
 import com.valerii.order.exception.InvalidOrderAmountException;
 import com.valerii.order.exception.OrderNotFoundException;
@@ -10,6 +11,7 @@ import com.valerii.order.model.*;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.OrderItemRequestDto;
 import com.valerii.order.model.request.OrderRequestDto;
+import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
 import com.valerii.order.model.response.page.PageResponseDto;
@@ -18,6 +20,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -31,17 +35,17 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static java.util.Collections.emptyList;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -53,6 +57,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(OrderController.class)
 @Import(GlobalExceptionHandler.class)
 public class OrderControllerTest {
+
+    private static ValidatorFactory factory;
+    private static Validator validator;
 
     @Autowired
     private MockMvc mockMvc;
@@ -68,6 +75,37 @@ public class OrderControllerTest {
 
     @MockitoBean
     private OrderRequestMapper orderRequestMapper;
+
+    @BeforeAll
+    static void setUpValidator() {
+        factory = Validation.buildDefaultValidatorFactory();
+        validator = factory.getValidator();
+    }
+
+    @AfterAll
+    static void closeValidator() {
+        factory.close();
+    }
+
+    private static List<OrderSummaryDto> testOrders() {
+        OrderStatus[] statuses = OrderStatus.values();
+        OffsetDateTime base = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
+        return IntStream.rangeClosed(1, 50)
+                .mapToObj(i -> {
+                    OffsetDateTime t = base.plusHours(i / 5);
+                    return OrderSummaryDto.builder()
+                            .id((long) i)
+                            .customerId((long) (i % 5) + 1)
+                            .status(statuses[i % statuses.length])
+                            .totalAmount(BigDecimal.valueOf(i * 10L).setScale(2,  RoundingMode.UNNECESSARY))
+                            .currency("USD")
+                            .createdAt(t)
+                            .updatedAt(t)
+                            .build();
+                })
+                .toList();
+    }
 
     @Test
     void findById_shouldReturnOrder_whenExists() throws Exception {
@@ -379,7 +417,15 @@ public class OrderControllerTest {
                 List.of(getCreateOrderItemCommand("Bugatti veyron", 1, new BigDecimal("6000000.00")),
                         getCreateOrderItemCommand("Bugatti divo", 1, new BigDecimal("6000000.00"))));
         when(orderRequestMapper.toCreateOrderCommand(orderRequest)).thenReturn(createOrderCommand);
-        Set<ConstraintViolation<Order>> orderViolations = getOrderViolations();
+
+        Order invalidOrder = getOrder(10L, 101L, "USD", new BigDecimal("12000000000000.00"), OrderStatus.CREATED,
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
+                List.of(getOrderItem(1L, 10L, "Tea", 2, new BigDecimal("13.44"),
+                                new BigDecimal("26.88")),
+                        getOrderItem(2L, 10L, "Coffee", 1, new BigDecimal("26.38"),
+                                new BigDecimal("26.38"))));
+        Set<ConstraintViolation<Order>> orderViolations = getViolations(invalidOrder);
 
         when(orderService.save(any(CreateOrderCommand.class)))
                 .thenThrow(new DomainInvariantViolationException(orderViolations));
@@ -402,40 +448,54 @@ public class OrderControllerTest {
         int page = 0;
         int size = 20;
 
-        List<OrderSummaryDto> orderList = getOrderList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
-
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        List<OrderSummaryDto> orderList = testOrders();
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 50L);
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(size))
                 .andExpect(jsonPath("$.page").value(page))
-                .andExpect(jsonPath("$.totalElements").value(3))
-                .andExpect(jsonPath("$.totalPages").value(1))
-                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.totalElements").value(50))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.hasNext").value(true))
                 .andExpect(jsonPath("$.hasPrevious").value(false))
 
-                .andExpect(jsonPath("$.content[0].id").value(100L))
+                .andExpect(jsonPath("$.content[0].id").value(1L))
+                .andExpect(jsonPath("$.content[0].customerId").value(2))
                 .andExpect(jsonPath("$.content[0].currency").value("USD"))
-                .andExpect(jsonPath("$.content[0].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("53.26")))
-                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-26T23:28:00Z"))
-                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-10-26T23:28:00Z"))
+                .andExpect(jsonPath("$.content[0].status").value("PROCESSING"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("10.0")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T00:00:00Z"))
 
-                .andExpect(jsonPath("$.content[1].id").value(101L))
+                .andExpect(jsonPath("$.content[1].id").value(2))
+                .andExpect(jsonPath("$.content[1].customerId").value(3))
                 .andExpect(jsonPath("$.content[1].currency").value("USD"))
-                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("62.9")))
-                .andExpect(jsonPath("$.content[1].createdAt").value("2026-10-26T22:28:00Z"))
-                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-10-26T22:28:00Z"))
+                .andExpect(jsonPath("$.content[1].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("20.0")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T00:00:00Z"))
 
-                .andExpect(jsonPath("$.content[2].id").value(102L))
+                .andExpect(jsonPath("$.content[2].id").value(3))
+                .andExpect(jsonPath("$.content[2].customerId").value(4))
                 .andExpect(jsonPath("$.content[2].currency").value("USD"))
-                .andExpect(jsonPath("$.content[2].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("41.98")))
-                .andExpect(jsonPath("$.content[2].createdAt").value("2026-10-26T21:28:00Z"))
-                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-10-26T21:28:00Z"));
+                .andExpect(jsonPath("$.content[2].status").value("CANCELLED"))
+                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("30.0")))
+                .andExpect(jsonPath("$.content[2].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-01-01T00:00:00Z"))
+
+                .andExpect(jsonPath("$.content[3].id").value(4))
+                .andExpect(jsonPath("$.content[3].customerId").value(5))
+                .andExpect(jsonPath("$.content[3].currency").value("USD"))
+                .andExpect(jsonPath("$.content[3].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[3].totalAmount").value(new BigDecimal("40.0")))
+                .andExpect(jsonPath("$.content[3].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[3].updatedAt").value("2026-01-01T00:00:00Z"));
     }
 
     @Test
@@ -444,9 +504,14 @@ public class OrderControllerTest {
         int size = 3;
 
         List<OrderSummaryDto> orderList = emptyList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 0L);
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 0L);
 
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders")
                         .param("page", "2147483647")
@@ -463,47 +528,254 @@ public class OrderControllerTest {
 
     @Test
     void findAll_shouldReturnOrderList_whenParamsAreSet() throws Exception {
-        int page = 0;
-        int size = 3;
+        int page = 1;
+        int size = 2;
 
-        List<OrderSummaryDto> orderList = getOrderList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 3L);
+        List<OrderSummaryDto> orderList = testOrders();
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 50L);
 
-        when(orderService.findAll(page, size)).thenReturn(orderPageResponseDto);
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
 
         mockMvc.perform(get("/api/v1/orders")
-                        .param("page", "0")
-                        .param("size", "3"))
+                        .param("page", "1")
+                        .param("size", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.size").value(size))
                 .andExpect(jsonPath("$.page").value(page))
-                .andExpect(jsonPath("$.totalElements").value(3))
-                .andExpect(jsonPath("$.totalPages").value(1))
-                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.totalElements").value(50))
+                .andExpect(jsonPath("$.totalPages").value(25))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(true))
+                .andExpect(jsonPath("$.content", hasSize(2)))
+
+                .andExpect(jsonPath("$.content[0].id").value(3))
+                .andExpect(jsonPath("$.content[0].customerId").value(4))
+                .andExpect(jsonPath("$.content[0].currency").value("USD"))
+                .andExpect(jsonPath("$.content[0].status").value("CANCELLED"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("30.0")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T00:00:00Z"))
+
+                .andExpect(jsonPath("$.content[1].id").value(4))
+                .andExpect(jsonPath("$.content[1].customerId").value(5))
+                .andExpect(jsonPath("$.content[1].currency").value("USD"))
+                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("40.0")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void findAll_shouldReturnOrderList_filteredByStatus() throws Exception {
+        int page = 0;
+        int size = 3;
+        String expectedStatus = "CREATED";
+        List<OrderSummaryDto> orderList = testOrders();
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .filter(order -> order.getStatus() == OrderStatus.CREATED)
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 12L);
+
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, expectedStatus);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "0")
+                        .param("size", "3")
+                        .param("status", "CREATED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(size))
+                .andExpect(jsonPath("$.page").value(page))
+                .andExpect(jsonPath("$.totalElements").value(12))
+                .andExpect(jsonPath("$.totalPages").value(4))
+                .andExpect(jsonPath("$.hasNext").value(true))
                 .andExpect(jsonPath("$.hasPrevious").value(false))
                 .andExpect(jsonPath("$.content", hasSize(3)))
 
-                .andExpect(jsonPath("$.content[0].id").value(100L))
+                .andExpect(jsonPath("$.content[0].id").value(4))
+                .andExpect(jsonPath("$.content[0].customerId").value(5))
                 .andExpect(jsonPath("$.content[0].currency").value("USD"))
                 .andExpect(jsonPath("$.content[0].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("53.26")))
-                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-26T23:28:00Z"))
-                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-10-26T23:28:00Z"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("40.0")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T00:00:00Z"))
 
-                .andExpect(jsonPath("$.content[1].id").value(101L))
+                .andExpect(jsonPath("$.content[1].id").value(8))
+                .andExpect(jsonPath("$.content[1].customerId").value(4))
                 .andExpect(jsonPath("$.content[1].currency").value("USD"))
                 .andExpect(jsonPath("$.content[1].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("62.9")))
-                .andExpect(jsonPath("$.content[1].createdAt").value("2026-10-26T22:28:00Z"))
-                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-10-26T22:28:00Z"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("80.0")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T01:00:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T01:00:00Z"))
 
-                .andExpect(jsonPath("$.content[2].id").value(102L))
+                .andExpect(jsonPath("$.content[2].id").value(12))
+                .andExpect(jsonPath("$.content[2].customerId").value(3))
                 .andExpect(jsonPath("$.content[2].currency").value("USD"))
                 .andExpect(jsonPath("$.content[2].status").value("CREATED"))
-                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("41.98")))
-                .andExpect(jsonPath("$.content[2].createdAt").value("2026-10-26T21:28:00Z"))
-                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-10-26T21:28:00Z"));
+                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("120.0")))
+                .andExpect(jsonPath("$.content[2].createdAt").value("2026-01-01T02:00:00Z"))
+                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-01-01T02:00:00Z"));
     }
+
+    @Test
+    void findAll_shouldReturnOrderList_filteredByCustomerId() throws Exception {
+        int page = 0;
+        int size = 3;
+        Long expectedCustomerId = 2L;
+        List<OrderSummaryDto> orderList = testOrders();
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .filter(order -> order.getCustomerId().equals(expectedCustomerId))
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 10L);
+
+        OrderFilterRequestDto orderFilter = getOrderFilter(expectedCustomerId, null);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "0")
+                        .param("size", "3")
+                        .param("customerId", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(size))
+                .andExpect(jsonPath("$.page").value(page))
+                .andExpect(jsonPath("$.totalElements").value(10))
+                .andExpect(jsonPath("$.totalPages").value(4))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.content", hasSize(3)))
+
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].customerId").value(2))
+                .andExpect(jsonPath("$.content[0].currency").value("USD"))
+                .andExpect(jsonPath("$.content[0].status").value("PROCESSING"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("10.0")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T00:00:00Z"))
+
+                .andExpect(jsonPath("$.content[1].id").value(6))
+                .andExpect(jsonPath("$.content[1].customerId").value(2))
+                .andExpect(jsonPath("$.content[1].currency").value("USD"))
+                .andExpect(jsonPath("$.content[1].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("60.0")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T01:00:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T01:00:00Z"))
+
+                .andExpect(jsonPath("$.content[2].id").value(11))
+                .andExpect(jsonPath("$.content[2].customerId").value(2))
+                .andExpect(jsonPath("$.content[2].currency").value("USD"))
+                .andExpect(jsonPath("$.content[2].status").value("CANCELLED"))
+                .andExpect(jsonPath("$.content[2].totalAmount").value(new BigDecimal("110.0")))
+                .andExpect(jsonPath("$.content[2].createdAt").value("2026-01-01T02:00:00Z"))
+                .andExpect(jsonPath("$.content[2].updatedAt").value("2026-01-01T02:00:00Z"));
+    }
+
+    @Test
+    void findAll_shouldReturnOrderList_filteredByStatusAndCustomerId() throws Exception {
+        int page = 0;
+        int size = 3;
+        String expectedStatus = "CREATED";
+        Long expectedCustomerId = 2L;
+        List<OrderSummaryDto> orderList = testOrders();
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .filter(order -> order.getCustomerId().equals(expectedCustomerId))
+                .filter(order -> order.getStatus() == OrderStatus.CREATED)
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 2L);
+
+        OrderFilterRequestDto orderFilter = getOrderFilter(expectedCustomerId, expectedStatus);
+        when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
+
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("page", "0")
+                        .param("size", "3")
+                        .param("customerId", "2")
+                        .param("status", expectedStatus))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(size))
+                .andExpect(jsonPath("$.page").value(page))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.hasPrevious").value(false))
+                .andExpect(jsonPath("$.content", hasSize(2)))
+
+                .andExpect(jsonPath("$.content[0].id").value(16))
+                .andExpect(jsonPath("$.content[0].customerId").value(2))
+                .andExpect(jsonPath("$.content[0].currency").value("USD"))
+                .andExpect(jsonPath("$.content[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("160.0")))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T03:00:00Z"))
+                .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T03:00:00Z"))
+
+                .andExpect(jsonPath("$.content[1].id").value(36))
+                .andExpect(jsonPath("$.content[1].customerId").value(2))
+                .andExpect(jsonPath("$.content[1].currency").value("USD"))
+                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("360.0")))
+                .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T07:00:00Z"))
+                .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T07:00:00Z"));
+    }
+
+    @Test
+    void findAll_shouldReturnBadRequest_whenStatusInvalid() throws Exception {
+        int page = 0;
+        int size = 20;
+        String expectedStatus = "C R E A T E";
+
+        OrderFilterRequestDto orderFilter = getOrderFilter(null, expectedStatus);
+        when(orderService.findAll(orderFilter, page, size)).thenThrow(new InvalidOrderStatusException(expectedStatus));
+        String errorMessage = "Unknown order status: " + expectedStatus;
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("status", expectedStatus))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "-1",
+            "0"
+    })
+    void findAll_shouldReturnBadRequest_whenCustomerIdIsZeroOrNegative(String customerId) throws Exception {
+        String errorMessage = "Customer id must be more than 0";
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("customerId", customerId))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void findAll_shouldReturnBadRequest_whenCustomerIdIsNotNumber() throws Exception {
+        String errorMessage = "Invalid value `abc` for parameter `customerId`";
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("customerId", "abc"))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
 
     @ParameterizedTest
     @CsvSource({
@@ -522,25 +794,7 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
-    private List<OrderSummaryDto> getOrderList () {
-        List<OrderSummaryDto> orders = new ArrayList<>();
-        String currency = "USD";
 
-        OrderSummaryDto order1 = getOrderSummary(100L, 101L, currency, new BigDecimal("53.26"), OrderStatus.CREATED,
-                OffsetDateTime.of(2026, 10, 26, 23, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 23, 28, 0, 0, ZoneOffset.UTC));
-        orders.add(order1);
-        OrderSummaryDto order2 = getOrderSummary(101L, 101L, currency, new BigDecimal("62.9"), OrderStatus.CREATED,
-                OffsetDateTime.of(2026, 10, 26, 22, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 22, 28, 0, 0, ZoneOffset.UTC));
-        orders.add(order2);
-        OrderSummaryDto order3 = getOrderSummary(102L, 101L, currency, new BigDecimal("41.98"), OrderStatus.CREATED,
-                OffsetDateTime.of(2026, 10, 26, 21, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 21, 28, 0, 0, ZoneOffset.UTC));
-        orders.add(order3);
-
-        return orders;
-    }
 
     private OrderResponseDto getOrderResponse(Long id, Long customerId, String currency, OrderStatus status,
                                               BigDecimal totalAmount, OffsetDateTime createdAt,
@@ -631,33 +885,14 @@ public class OrderControllerTest {
                 .build();
     }
 
-    private Set<ConstraintViolation<Order>> getOrderViolations() {
-        Order invalidOrder = getOrder(10L, 101L, "USD", new BigDecimal("12000000000000.00"), OrderStatus.CREATED,
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                List.of(getOrderItem(1L, 10L, "Tea", 2, new BigDecimal("13.44"),
-                                new BigDecimal("26.88")),
-                        getOrderItem(2L, 10L, "Coffee", 1, new BigDecimal("26.38"),
-                                new BigDecimal("26.38"))));
-
-        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
-            Validator validator = factory.getValidator();
-            Set<ConstraintViolation<Order>> violations = validator.validate(invalidOrder);
-            assertFalse(violations.isEmpty());
-            return violations;
-        }
+    private <T> Set<ConstraintViolation<T>> getViolations(T invalidObject) {
+        return validator.validate(invalidObject);
     }
 
-    private OrderSummaryDto getOrderSummary(Long id, Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
-                           OffsetDateTime createdAt, OffsetDateTime updatedAt) {
-        return OrderSummaryDto.builder()
-                .id(id)
+    private OrderFilterRequestDto getOrderFilter(Long customerId, String status) {
+        return OrderFilterRequestDto.builder()
                 .customerId(customerId)
-                .currency(currency)
-                .totalAmount(totalAmount)
                 .status(status)
-                .createdAt(createdAt)
-                .updatedAt(updatedAt)
                 .build();
     }
 }
