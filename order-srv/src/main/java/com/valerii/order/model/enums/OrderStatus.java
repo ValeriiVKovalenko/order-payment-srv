@@ -15,7 +15,7 @@ public enum OrderStatus {
         }
 
         return Arrays.stream(values())
-                .filter(status -> status.name().equalsIgnoreCase(requestStatus))
+                .filter(status -> status.name().equals(requestStatus))
                 .findFirst();
     }
 }

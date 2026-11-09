@@ -16,6 +16,8 @@ import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -186,12 +188,18 @@ public class OrderServiceTest {
         verify(orderMapper).toSummaryDtoList(orderEntities);
     }
 
-    @Test
-    void findALL_shouldReturnInvalidOrderStatusException() {
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {
+            "created",
+            "processing",
+            "Created",
+            "C R E A T E D",
+            " ",
+            "UNKNOWN"})
+    void findALL_shouldReturnInvalidOrderStatusException(String invalidStatus) {
         //given
         int page = 0;
         int size = 2;
-       String invalidStatus = "UNKNOWN";
        OrderFilterRequestDto filter = getOrderFilterRequest(null, invalidStatus);
 
        //when
