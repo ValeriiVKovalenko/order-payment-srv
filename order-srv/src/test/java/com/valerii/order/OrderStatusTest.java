@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderStatusTest {
 
     @ParameterizedTest
-    @ValueSource(strings = {"CREATED", "created", "Created", "cReAtEd"})
+    @ValueSource(strings = {"CREATED", "created", "Created", "cReAtEd", " Created "})
     void fromString_shouldReturnCreated_regardlessOfCase(String input) {
         assertThat(OrderStatus.fromString(input)).contains(OrderStatus.CREATED);
     }
