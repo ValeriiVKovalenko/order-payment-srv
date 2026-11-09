@@ -8,6 +8,7 @@ import com.valerii.order.model.CreateOrderItemCommand;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.enums.OrderStatus;
+import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -157,14 +158,35 @@ public class OrderServiceIntegrationTest {
                 .when(orderRepository)
                 .saveOrderItems(anyList(), anyLong());
 
-        DataIntegrityViolationException exeption =
+        DataIntegrityViolationException exception =
                 assertThrows(DataIntegrityViolationException.class, () -> orderService.save(createOrderCommand));
-        assertEquals("Test failure", exeption.getMessage());
+        assertEquals("Test failure", exception.getMessage());
 
         verify(orderRepository).saveOrder(any());
         verify(orderRepository).saveOrderItems(anyList(), anyLong());
 
         Integer after = jdbcTemplate.queryForObject(sql, parameterSource, Integer.class);
         assertEquals(before, after);
+    }
+
+    @Test
+    void updateStatus_shouldTransitionStatusSuccessfully() {
+        Long customerId = 101L;
+        String currency = "USD";
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+        Order savedOrder = orderService.save(createOrderCommand);
+
+        Long orderId = savedOrder.getId();
+        String expected = "PROCESSING";
+        UpdateStatusRequestDto requestDto = new UpdateStatusRequestDto(expected);
+        orderService.updateStatus(orderId, requestDto);
+
+        String sql = "SELECT status FROM orders WHERE id = :id";
+        MapSqlParameterSource params = new MapSqlParameterSource("id", orderId);
+        String actual = jdbcTemplate.queryForObject(sql, params, String.class);
+
+        assertEquals(expected, actual);
     }
 }

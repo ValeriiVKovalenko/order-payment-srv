@@ -11,6 +11,7 @@ import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
+import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
@@ -207,6 +208,36 @@ public class OrderServiceTest {
         verifyNoInteractions(orderRepository, orderMapper);
     }
 
+    @Test
+    void updateStatus_shouldUpdateStatusSuccessfully() {
+        //given
+        Long orderId = 1L;
+        String status = "PROCESSING";
+        UpdateStatusRequestDto requestDto = new UpdateStatusRequestDto(status);
+        String expectedStatus = "CREATED";
+
+        when(orderRepository.findStatus(orderId)).thenReturn(expectedStatus);
+
+        //when
+        orderService.updateStatus(orderId, requestDto);
+
+        //then
+        verify(orderRepository).updateStatus(orderId, OrderStatus.PROCESSING);
+    }
+
+    @Test
+    void updateStatus_shouldThrowException_whenUnknownStatus() {
+        //given
+        Long orderId = 1L;
+        UpdateStatusRequestDto request = new UpdateStatusRequestDto("UNKNOWN");
+        String message = "Unknown order status: UNKNOWN";
+        assertThatThrownBy(() -> orderService.updateStatus(orderId, request))
+                .isInstanceOf(InvalidOrderStatusException.class)
+                .hasMessage(message);
+
+        //then
+        verifyNoInteractions(orderRepository);
+    }
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
                                           BigDecimal unitPrice, BigDecimal lineTotal) {

@@ -1,6 +1,7 @@
 package com.valerii.order.repository;
 
 import com.valerii.order.config.TestcontainersConfiguration;
+import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
@@ -25,6 +26,7 @@ import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest()
@@ -353,6 +355,50 @@ public class OrderRepositoryIntegrationTest {
         assertThat(collected)
                 .doesNotHaveDuplicates()
                 .containsExactlyInAnyOrderElementsOf(expectedIds);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findStatus_shouldReturnStatus() {
+        //given
+        Long orderId = 1L;
+        String expected = "PROCESSING";
+
+        //when
+        String actual = orderRepository.findStatus(orderId);
+
+        //then
+        assertNotNull(actual);
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findStatus_shouldThrowException() {
+        //given
+        Long orderId = -1L;
+        String message = "Order with id `" + orderId + "` not found";
+
+        //then
+        assertThatThrownBy(() -> orderRepository.findStatus(orderId))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessage(message);
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void updateStatus_shouldUpdateStatusSuccessful() {
+        //given
+        Long orderId = 1L;
+        OrderStatus newUpdateStatus = OrderStatus.COMPLETED;
+
+        //when
+        orderRepository.updateStatus(orderId, newUpdateStatus);
+
+        String checkNewStatus = orderRepository.findStatus(1L);
+
+        //then
+        assertEquals(newUpdateStatus.name(), checkNewStatus);
     }
 
     private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
