@@ -8,7 +8,6 @@ import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
-import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,26 +33,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class OrderRepositoryIntegrationTest {
     @Autowired
     OrderRepository orderRepository;
-
-    private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
-                           List<OrderItem> orderItems) {
-        return Order.builder()
-                .customerId(customerId)
-                .currency(currency)
-                .totalAmount(totalAmount)
-                .status(status)
-                .orderItems(orderItems)
-                .build();
-    }
-
-    private OrderItem getOrderItem(String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
-        return OrderItem.builder()
-                .productName(productName)
-                .unitPrice(unitPrice)
-                .quantity(quantity)
-                .lineTotal(lineTotal)
-                .build();
-    }
 
     @Test
     void find_shouldReturnOptionalEmptyWhenOrderWithDifferentIdExists() {
@@ -341,6 +321,58 @@ public class OrderRepositoryIntegrationTest {
         List<OrderEntity> orders = orderRepository.findAll(orderFilter, size, pagingParams.getOffset());
 
         assertThat(orders).isEmpty();
+    }
+
+    @Test
+    @Sql("/sql/order/orders-50.sql")
+    void findAll_shouldPaginateAllCreatedOrders_withoutGapsOrDuplicates() {
+        //given
+        OrderFilterDto filter = new OrderFilterDto(null, OrderStatus.CREATED);
+        int size = 5;
+        List<Long> expectedIds = List.of(4L, 8L, 12L, 16L, 20L, 24L, 28L, 32L, 36L, 40L, 44L, 48L);
+
+        //when
+        Long total = orderRepository.findOrderTotalElements(filter);
+        List<OrderEntity> page1 = orderRepository.findAll(filter, size, 0L);
+        List<OrderEntity> page2 = orderRepository.findAll(filter, size, 5L);
+        List<OrderEntity> page3 = orderRepository.findAll(filter, size, 10L);
+        List<OrderEntity> page4 = orderRepository.findAll(filter, size, 15L);
+
+        //then
+        assertThat(total).isEqualTo(12L);
+        assertThat(page1).hasSize(5);
+        assertThat(page2).hasSize(5);
+        assertThat(page3).hasSize(2);
+        assertThat(page4).isEmpty();
+
+        List<Long> collected = Stream.of(page1, page2, page3)
+                .flatMap(List::stream)
+                .map(OrderEntity::getId)
+                .toList();
+
+        assertThat(collected)
+                .doesNotHaveDuplicates()
+                .containsExactlyInAnyOrderElementsOf(expectedIds);
+    }
+
+    private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,
+                           List<OrderItem> orderItems) {
+        return Order.builder()
+                .customerId(customerId)
+                .currency(currency)
+                .totalAmount(totalAmount)
+                .status(status)
+                .orderItems(orderItems)
+                .build();
+    }
+
+    private OrderItem getOrderItem(String productName, Integer quantity, BigDecimal unitPrice, BigDecimal lineTotal) {
+        return OrderItem.builder()
+                .productName(productName)
+                .unitPrice(unitPrice)
+                .quantity(quantity)
+                .lineTotal(lineTotal)
+                .build();
     }
 }
 

@@ -1,5 +1,6 @@
 package com.valerii.order.service;
 
+import com.valerii.order.exception.InvalidOrderStatusException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
 import com.valerii.order.model.Order;
@@ -185,6 +186,23 @@ public class OrderServiceTest {
         verify(orderMapper).toSummaryDtoList(orderEntities);
     }
 
+    @Test
+    void findALL_shouldReturnInvalidOrderStatusException() {
+        //given
+        int page = 0;
+        int size = 2;
+       String invalidStatus = "UNKNOWN";
+       OrderFilterRequestDto filter = getOrderFilterRequest(null, invalidStatus);
+
+       //when
+        assertThatThrownBy(() -> orderService.findAll(filter, page, size))
+                .isInstanceOf(InvalidOrderStatusException.class)
+                .hasMessageContaining(invalidStatus);
+
+        verifyNoInteractions(orderRepository, orderMapper);
+    }
+
+
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
                                           BigDecimal unitPrice, BigDecimal lineTotal) {
         return OrderItemEntity.builder()
@@ -299,8 +317,8 @@ public class OrderServiceTest {
 
     private OrderFilterRequestDto getOrderFilterRequest(Long customerId, String status) {
         return OrderFilterRequestDto.builder()
-                .customerId(null)
-                .status(null)
+                .customerId(customerId)
+                .status(status)
                 .build();
     }
 }

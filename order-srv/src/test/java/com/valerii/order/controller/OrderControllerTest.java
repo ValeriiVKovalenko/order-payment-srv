@@ -449,7 +449,10 @@ public class OrderControllerTest {
         int size = 20;
 
         List<OrderSummaryDto> orderList = testOrders();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 50L);
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 50L);
         OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
         when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
 
@@ -501,7 +504,11 @@ public class OrderControllerTest {
         int size = 3;
 
         List<OrderSummaryDto> orderList = emptyList();
-        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(orderList, size, page, 0L);
+        List<OrderSummaryDto> filteredList = orderList.stream()
+                .skip((long) page * size)
+                .limit(size)
+                .toList();
+        PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 0L);
 
         OrderFilterRequestDto orderFilter = getOrderFilter(null, null);
         when(orderService.findAll(orderFilter, page, size)).thenReturn(orderPageResponseDto);
@@ -526,6 +533,7 @@ public class OrderControllerTest {
 
         List<OrderSummaryDto> orderList = testOrders();
         List<OrderSummaryDto> filteredList = orderList.stream()
+                .skip((long) page * size)
                 .limit(size)
                 .toList();
         PageResponseDto<OrderSummaryDto> orderPageResponseDto = PageResponseDto.of(filteredList, size, page, 50L);
@@ -545,19 +553,19 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.hasPrevious").value(true))
                 .andExpect(jsonPath("$.content", hasSize(2)))
 
-                .andExpect(jsonPath("$.content[0].id").value(1))
-                .andExpect(jsonPath("$.content[0].customerId").value(2))
+                .andExpect(jsonPath("$.content[0].id").value(3))
+                .andExpect(jsonPath("$.content[0].customerId").value(4))
                 .andExpect(jsonPath("$.content[0].currency").value("USD"))
-                .andExpect(jsonPath("$.content[0].status").value("PROCESSING"))
-                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("10.0")))
+                .andExpect(jsonPath("$.content[0].status").value("CANCELLED"))
+                .andExpect(jsonPath("$.content[0].totalAmount").value(new BigDecimal("30.0")))
                 .andExpect(jsonPath("$.content[0].createdAt").value("2026-01-01T00:00:00Z"))
                 .andExpect(jsonPath("$.content[0].updatedAt").value("2026-01-01T00:00:00Z"))
 
-                .andExpect(jsonPath("$.content[1].id").value(2))
-                .andExpect(jsonPath("$.content[1].customerId").value(3))
+                .andExpect(jsonPath("$.content[1].id").value(4))
+                .andExpect(jsonPath("$.content[1].customerId").value(5))
                 .andExpect(jsonPath("$.content[1].currency").value("USD"))
-                .andExpect(jsonPath("$.content[1].status").value("COMPLETED"))
-                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("20.0")))
+                .andExpect(jsonPath("$.content[1].status").value("CREATED"))
+                .andExpect(jsonPath("$.content[1].totalAmount").value(new BigDecimal("40.0")))
                 .andExpect(jsonPath("$.content[1].createdAt").value("2026-01-01T00:00:00Z"))
                 .andExpect(jsonPath("$.content[1].updatedAt").value("2026-01-01T00:00:00Z"));
     }
@@ -741,7 +749,7 @@ public class OrderControllerTest {
             "-1",
             "0"
     })
-    void findAll_shouldReturnBadRequest_whenStatusInvalid(String customerId) throws Exception {
+    void findAll_shouldReturnBadRequest_whenCustomerIdIsZeroOrNegative(String customerId) throws Exception {
         String errorMessage = "Customer id must be more than 0";
         mockMvc.perform(get("/api/v1/orders")
                         .param("customerId", customerId))
@@ -753,6 +761,21 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.path").value("/api/v1/orders"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
+
+    @Test
+    void findAll_shouldReturnBadRequest_whenCustomerIdIsNotNumber() throws Exception {
+        String errorMessage = "Invalid value `abc` for parameter `customerId`";
+        mockMvc.perform(get("/api/v1/orders")
+                        .param("customerId", "abc"))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
 
     @ParameterizedTest
     @CsvSource({
