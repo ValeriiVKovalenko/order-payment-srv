@@ -101,13 +101,15 @@ public class OrderServiceImpl implements  OrderService {
                 .orElseThrow(() -> new InvalidOrderStatusException(status));
 
         String oldStatus = orderRepository.findStatus(id);
+        if (oldStatus.equals(newOrderStatus.name())) {
+            return;
+        }
+
         OrderStatus oldOrderStatus = OrderStatus.fromString(oldStatus)
                 .orElseThrow(() -> new InvalidOrderStatusException(oldStatus));
 
-        boolean canTransitionTo = OrderStatus.canTransitionTo(oldOrderStatus, newOrderStatus);
+        OrderStatus.validateTransitionTo(oldOrderStatus, newOrderStatus);
 
-        if (canTransitionTo) {
-            orderRepository.updateStatus(id, newOrderStatus);
-        }
+        orderRepository.updateStatus(id, newOrderStatus);
     }
 }

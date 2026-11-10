@@ -21,8 +21,7 @@ public enum OrderStatus {
                 .findFirst();
     }
 
-    public static boolean canTransitionTo(OrderStatus oldStatus, OrderStatus newStatus) {
-        boolean canTransition = true;
+    public static void validateTransitionTo(OrderStatus oldStatus, OrderStatus newStatus) {
         switch (oldStatus) {
             case CREATED:
                 if (newStatus == COMPLETED) {
@@ -37,6 +36,5 @@ public enum OrderStatus {
             case COMPLETED, CANCELLED:
                 throw new InvalidOrderUpdateStatusException(oldStatus, newStatus);
         }
-        return canTransition;
     }
 }
