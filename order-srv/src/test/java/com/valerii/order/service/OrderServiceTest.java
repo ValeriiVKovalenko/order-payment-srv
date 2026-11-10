@@ -18,6 +18,7 @@ import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -30,8 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -237,6 +237,23 @@ public class OrderServiceTest {
 
         //then
         verifyNoInteractions(orderRepository);
+    }
+
+    @ParameterizedTest
+    @EnumSource(OrderStatus.class)
+    void updateStatus_shouldNotUpdateAndReturnWithoutException_whenStatusEquals(OrderStatus status) {
+        // given
+        Long orderId = 1L;
+        UpdateStatusRequestDto dto = new UpdateStatusRequestDto(status.name());
+        when(orderRepository.findStatus(orderId)).thenReturn(status.name());
+
+        // when
+        assertThatCode(() -> orderService.updateStatus(orderId, dto))
+                .doesNotThrowAnyException();
+
+        // then
+        verify(orderRepository).findStatus(orderId);
+        verify(orderRepository, never()).updateStatus(anyLong(), any());
     }
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
