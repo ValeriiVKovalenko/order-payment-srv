@@ -1,11 +1,14 @@
 package com.valerii.order.repository.order;
 
+import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.extractor.OrderResultSetExtractor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -85,6 +88,35 @@ public class OrderRepositoryImpl implements OrderRepository {
         String sql = "SELECT count(*) " + ORDERS_FROM + buildWhereClause(filter, params);
 
         return jdbcTemplate.queryForObject(sql, params, Long.class);
+    }
+
+    @Override
+    public String findStatus(Long id) {
+        MapSqlParameterSource params = new MapSqlParameterSource("id", id);
+        String sql = """
+                SELECT status
+                FROM orders
+                WHERE id = :id FOR UPDATE
+                """;
+        try {
+            return jdbcTemplate.queryForObject(sql, params, String.class);
+        } catch (EmptyResultDataAccessException ex) {
+            throw new OrderNotFoundException(id);
+        }
+    }
+
+    @Override
+    public void updateStatus(Long id, OrderStatus newOrderStatus) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("id", id)
+                .addValue("status", newOrderStatus.name());
+
+        String sql = """
+                UPDATE orders
+                SET status = :status
+                WHERE id = :id
+                """;
+        jdbcTemplate.update(sql, params);
     }
 
     @Override

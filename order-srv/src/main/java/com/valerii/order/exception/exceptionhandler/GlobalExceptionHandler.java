@@ -76,6 +76,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
+    @ExceptionHandler(InvalidOrderUpdateStatusException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidOrderUpdateStatusException(InvalidOrderUpdateStatusException ex,
+                                                                                 HttpServletRequest request) {
+        log.error("Invalid order status update: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {
         return ResponseEntity.status(status)
                 .body(ApiErrorResponseDto.of(

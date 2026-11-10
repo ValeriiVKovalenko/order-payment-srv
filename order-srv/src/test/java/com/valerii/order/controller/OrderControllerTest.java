@@ -11,6 +11,7 @@ import com.valerii.order.model.*;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.OrderItemRequestDto;
 import com.valerii.order.model.request.OrderRequestDto;
+import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
@@ -49,8 +50,7 @@ import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -153,7 +153,7 @@ public class OrderControllerTest {
         Long orderId = -1L;
         String errorMessage = String.format("Order with id `%d` not found", orderId);
         when(orderService.findById(orderId))
-                .thenThrow(new OrderNotFoundException(errorMessage));
+                .thenThrow(new OrderNotFoundException(orderId));
 
         mockMvc.perform(get("/api/v1/orders/{id}", orderId))
                 .andExpect(status().isNotFound())
@@ -794,7 +794,35 @@ public class OrderControllerTest {
                 .andExpect(jsonPath("$.message").exists());
     }
 
+   @Test
+    void updateStatus_shouldReturn400WhenStatusInvalid() throws Exception {
+        Long orderId = 1L;
+        String status = " ";
+        UpdateStatusRequestDto requestDto = new UpdateStatusRequestDto(status);
 
+        String errorMessage = "status: Status must be not an empty line";
+        mockMvc.perform(patch("/api/v1/orders/{id}/status", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders/1/status"))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void updateStatus_shouldReturn204_whenStatusIsValid() throws Exception {
+        Long orderId = 1L;
+        String status = "CREATED";
+        UpdateStatusRequestDto requestDto = new UpdateStatusRequestDto(status);
+
+        mockMvc.perform(patch("/api/v1/orders/{id}/status", orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestDto)))
+                .andExpect(status().isNoContent());
+    }
 
     private OrderResponseDto getOrderResponse(Long id, Long customerId, String currency, OrderStatus status,
                                               BigDecimal totalAmount, OffsetDateTime createdAt,

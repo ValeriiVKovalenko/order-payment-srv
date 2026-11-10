@@ -12,6 +12,7 @@ import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
+import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
 import com.valerii.order.repository.order.OrderRepository;
@@ -69,7 +70,7 @@ public class OrderServiceImpl implements  OrderService {
     @Override
     public Order findById(Long orderId) {
         OrderEntity orderEntity = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException(String.format("Order with id `%d` not found", orderId)));
+                .orElseThrow(() -> new OrderNotFoundException(orderId));
         return orderMapper.toDomain(orderEntity);
     }
 
@@ -90,5 +91,25 @@ public class OrderServiceImpl implements  OrderService {
         List<OrderSummaryDto> domainOrderList = orderMapper.toSummaryDtoList(orders);
 
         return PageResponseDto.of(domainOrderList, size, page, totalElements);
+    }
+
+    @Override
+    @Transactional
+    public void updateStatus(Long id, UpdateStatusRequestDto requestDto) {
+        String status = requestDto.getStatus();
+        OrderStatus newOrderStatus = OrderStatus.fromString(status)
+                .orElseThrow(() -> new InvalidOrderStatusException(status));
+
+        String oldStatus = orderRepository.findStatus(id);
+        if (oldStatus.equals(newOrderStatus.name())) {
+            return;
+        }
+
+        OrderStatus oldOrderStatus = OrderStatus.fromString(oldStatus)
+                .orElseThrow(() -> new InvalidOrderStatusException(oldStatus));
+
+        OrderStatus.validateTransitionTo(oldOrderStatus, newOrderStatus);
+
+        orderRepository.updateStatus(id, newOrderStatus);
     }
 }

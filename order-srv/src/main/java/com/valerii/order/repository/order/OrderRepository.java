@@ -4,6 +4,7 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.enums.OrderStatus;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,4 +20,8 @@ public interface OrderRepository {
     List<OrderEntity> findAll(OrderFilterDto filter, Integer size, Long offset);
 
     Long findOrderTotalElements(OrderFilterDto filter);
+
+    String findStatus(Long id);
+
+    void updateStatus(Long id, OrderStatus newOrderStatus);
 }
