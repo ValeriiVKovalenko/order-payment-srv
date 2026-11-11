@@ -152,7 +152,7 @@ public class OrderRepositoryImpl implements OrderRepository {
                 changed_at
                 FROM order_status_history
                 WHERE order_id = :id
-                ORDER BY changed_at DESC, order_id DESC
+                ORDER BY changed_at DESC
                 """;
         return jdbcTemplate.query(sql, params, ORDER_STATUS_HISTORY_ROW_MAPPER);
     }
