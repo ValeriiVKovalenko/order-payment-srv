@@ -16,6 +16,7 @@ import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.orderitem.OrderItemResponseDto;
 import com.valerii.order.model.response.page.PageResponseDto;
+import com.valerii.order.model.response.status.OrderStatusHistoryResponse;
 import com.valerii.order.service.OrderService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -39,9 +40,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 
 import static java.util.Collections.emptyList;
@@ -87,13 +86,15 @@ public class OrderControllerTest {
         factory.close();
     }
 
+    private static final OffsetDateTime BASE =
+            OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
     private static List<OrderSummaryDto> testOrders() {
         OrderStatus[] statuses = OrderStatus.values();
-        OffsetDateTime base = OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
 
         return IntStream.rangeClosed(1, 50)
                 .mapToObj(i -> {
-                    OffsetDateTime t = base.plusHours(i / 5);
+                    OffsetDateTime t = BASE.plusHours(i / 5);
                     return OrderSummaryDto.builder()
                             .id((long) i)
                             .customerId((long) (i % 5) + 1)
@@ -105,6 +106,34 @@ public class OrderControllerTest {
                             .build();
                 })
                 .toList();
+    }
+
+    private static List<OrderStatusHistoryResponse> historyCompleted() {
+        return List.of(
+                history(OrderStatus.PROCESSING, OrderStatus.COMPLETED, BASE.plusHours(1)),
+                history(OrderStatus.CREATED, OrderStatus.PROCESSING, BASE)
+                );
+    }
+
+    private static List<OrderStatusHistoryResponse> historyCancelledAfterProcessing() {
+        return List.of(
+                history(OrderStatus.PROCESSING, OrderStatus.CANCELLED, BASE.plusHours(1)),
+                history(OrderStatus.CREATED, OrderStatus.PROCESSING, BASE)
+                );
+    }
+
+    private static List<OrderStatusHistoryResponse> historyCancelledImmediately() {
+        return List.of(
+                history(OrderStatus.CREATED, OrderStatus.CANCELLED, BASE));
+    }
+
+    private static OrderStatusHistoryResponse history(
+            OrderStatus from, OrderStatus to, OffsetDateTime changedAt) {
+        return OrderStatusHistoryResponse.builder()
+                .fromStatus(from)
+                .toStatus(to)
+                .changedAt(changedAt)
+                .build();
     }
 
     @Test
@@ -822,6 +851,75 @@ public class OrderControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getStatusHistory_shouldReturnHistoryCancelledAfterProcessingList() throws Exception {
+        Long orderId = 2L;
+        List<OrderStatusHistoryResponse> result = historyCancelledAfterProcessing();
+        when(orderService.findOrderStatusHistory(orderId)).thenReturn(result);
+        mockMvc.perform(get("/api/v1/orders/{id}/status-history", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].fromStatus").value("PROCESSING"))
+                .andExpect(jsonPath("$[0].toStatus").value("CANCELLED"))
+                .andExpect(jsonPath("$[0].changedAt").value("2026-01-01T01:00:00Z"))
+
+                .andExpect(jsonPath("$[1].fromStatus").value("CREATED"))
+                .andExpect(jsonPath("$[1].toStatus").value("PROCESSING"))
+                .andExpect(jsonPath("$[1].changedAt").value("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void getStatusHistory_shouldReturnHistoryCompletedList() throws Exception {
+        Long orderId = 2L;
+        List<OrderStatusHistoryResponse> result = historyCompleted();
+        when(orderService.findOrderStatusHistory(orderId)).thenReturn(result);
+        mockMvc.perform(get("/api/v1/orders/{id}/status-history", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].fromStatus").value("PROCESSING"))
+                .andExpect(jsonPath("$[0].toStatus").value("COMPLETED"))
+                .andExpect(jsonPath("$[0].changedAt").value("2026-01-01T01:00:00Z"))
+
+                .andExpect(jsonPath("$[1].fromStatus").value("CREATED"))
+                .andExpect(jsonPath("$[1].toStatus").value("PROCESSING"))
+                .andExpect(jsonPath("$[1].changedAt").value("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void getStatusHistory_shouldReturnHistoryCancelledImmediatelyList() throws Exception {
+        Long orderId = 2L;
+        List<OrderStatusHistoryResponse> result = historyCancelledImmediately();
+        when(orderService.findOrderStatusHistory(orderId)).thenReturn(result);
+        mockMvc.perform(get("/api/v1/orders/{id}/status-history", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].fromStatus").value("CREATED"))
+                .andExpect(jsonPath("$[0].toStatus").value("CANCELLED"))
+                .andExpect(jsonPath("$[0].changedAt").value("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void getStatusHistory_shouldReturnEmptyList() throws Exception {
+        Long orderId = 5L;
+        List<OrderStatusHistoryResponse> result = emptyList();
+        when(orderService.findOrderStatusHistory(orderId)).thenReturn(result);
+        mockMvc.perform(get("/api/v1/orders/{id}/status-history", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void getStatusHistory_shouldReturnBadRequest_whenOrderIdIsInvalid() throws Exception {
+        String errorMessage = String.format("Invalid value `%s` for parameter `%s`", "ABC", "id");
+        mockMvc.perform(get("/api/v1/orders/{id}/status-history", "ABC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/orders/ABC/status-history"))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     private OrderResponseDto getOrderResponse(Long id, Long customerId, String currency, OrderStatus status,

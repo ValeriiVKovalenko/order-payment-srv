@@ -10,6 +10,7 @@ import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.order.OrderResponseDto;
 import com.valerii.order.model.response.page.PageResponseDto;
+import com.valerii.order.model.response.status.OrderStatusHistoryResponse;
 import com.valerii.order.service.OrderService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -68,5 +70,12 @@ public class OrderController {
                                                   @Valid @RequestBody UpdateStatusRequestDto requestDto) {
         orderService.updateStatus(id, requestDto);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(value = "/{id}/status-history")
+    public ResponseEntity<List<OrderStatusHistoryResponse>> getOrderStatusHistory(@PathVariable Long id) {
+        List<OrderStatusHistoryResponse> orderStatusHistory = orderService.findOrderStatusHistory(id);
+
+        return ResponseEntity.ok(orderStatusHistory);
     }
 }

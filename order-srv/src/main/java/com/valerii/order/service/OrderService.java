@@ -6,6 +6,9 @@ import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
+import com.valerii.order.model.response.status.OrderStatusHistoryResponse;
+
+import java.util.List;
 
 public interface OrderService {
     Order save(CreateOrderCommand order);
@@ -15,4 +18,6 @@ public interface OrderService {
     PageResponseDto<OrderSummaryDto> findAll(OrderFilterRequestDto filter, Integer page, Integer size);
 
     void updateStatus(Long id, UpdateStatusRequestDto requestDto);
+
+    List<OrderStatusHistoryResponse> findOrderStatusHistory(Long id);
 }

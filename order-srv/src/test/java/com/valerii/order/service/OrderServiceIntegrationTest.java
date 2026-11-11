@@ -188,5 +188,9 @@ public class OrderServiceIntegrationTest {
         String actual = jdbcTemplate.queryForObject(sql, params, String.class);
 
         assertEquals(expected, actual);
+
+        verify(orderRepository).findStatus(orderId);
+        verify(orderRepository).updateStatus(anyLong(), any());
+        verify(orderRepository).createOrderStatusHistory(anyLong(), any(), any());
     }
 }

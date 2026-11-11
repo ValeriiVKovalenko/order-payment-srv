@@ -7,6 +7,7 @@ import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
+import com.valerii.order.model.entity.OrderStatusHistoryEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
 import com.valerii.order.repository.order.OrderRepository;
@@ -25,8 +26,7 @@ import java.util.Optional;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest()
@@ -399,6 +399,84 @@ public class OrderRepositoryIntegrationTest {
 
         //then
         assertEquals(newUpdateStatus.name(), checkNewStatus);
+    }
+
+    @Test
+    @Sql("/sql/status/status-4.sql")
+    void findOrderStatusHistory_shouldReturnHistoryCompleted() {
+        Long orderId = 2L;
+
+        List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(orderId);
+
+        assertThat(orderStatusHistory)
+                .extracting(OrderStatusHistoryEntity::getOldStatus, OrderStatusHistoryEntity::getNewStatus)
+                .containsExactly(
+                        tuple(OrderStatus.PROCESSING.name(), OrderStatus.COMPLETED.name()),
+                        tuple(OrderStatus.CREATED.name(), OrderStatus.PROCESSING.name())
+                );
+    }
+
+    @Test
+    @Sql("/sql/status/status-4.sql")
+    void findOrderStatusHistory_shouldReturnHistoryCancelledAfterProcessing() {
+        Long orderId = 3L;
+
+        List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(orderId);
+
+        assertThat(orderStatusHistory)
+                .extracting(OrderStatusHistoryEntity::getOldStatus, OrderStatusHistoryEntity::getNewStatus)
+                .containsExactly(
+                        tuple(OrderStatus.PROCESSING.name(), OrderStatus.CANCELLED.name()),
+                        tuple(OrderStatus.CREATED.name(), OrderStatus.PROCESSING.name())
+                );
+    }
+
+    @Test
+    @Sql("/sql/status/status-4.sql")
+    void findOrderStatusHistory_shouldReturnHistoryCancelledImmediately() {
+        Long orderId = 4L;
+
+        List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(orderId);
+
+        assertThat(orderStatusHistory)
+                .extracting(OrderStatusHistoryEntity::getOldStatus, OrderStatusHistoryEntity::getNewStatus)
+                .containsExactly(
+                        tuple(OrderStatus.CREATED.name(), OrderStatus.CANCELLED.name())
+                );
+    }
+
+    @Test
+    @Sql("/sql/status/status-4.sql")
+    void findOrderStatusHistory_shouldReturnEmptyList() {
+        Long orderId = 1L;
+
+        List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(orderId);
+
+        assertThat(orderStatusHistory).isEmpty();
+    }
+
+    @Test
+    void createOrderStatusHistory_shouldSaveStatusHistorySuccessfully() {
+        //given
+        Order order = getOrder(100L, "USD", new BigDecimal("150"), OrderStatus.CREATED,
+                List.of(getOrderItem("Tea", 2, new BigDecimal("50"), new BigDecimal("100")),
+                        getOrderItem("Coffee",1, new BigDecimal("50"), new BigDecimal("50"))));
+        OrderEntity orderEntityWithId = orderRepository.saveOrder(order);
+        orderRepository.saveOrderItems(order.getOrderItems(), orderEntityWithId.getId());
+        OrderStatus fromStatus = OrderStatus.CREATED;
+        OrderStatus toStatus = OrderStatus.PROCESSING;
+
+        //when
+        orderRepository.createOrderStatusHistory(orderEntityWithId.getId(), fromStatus, toStatus);
+
+        //then
+        List<OrderStatusHistoryEntity> orderStatusHistory =
+                orderRepository.findOrderStatusHistory(orderEntityWithId.getId());
+
+        assertThat(orderStatusHistory).extracting(OrderStatusHistoryEntity::getOldStatus, OrderStatusHistoryEntity::getNewStatus)
+                .containsExactly(
+                        tuple(OrderStatus.CREATED.name(), OrderStatus.PROCESSING.name()));
+
     }
 
     private Order getOrder(Long customerId, String currency, BigDecimal totalAmount, OrderStatus status,

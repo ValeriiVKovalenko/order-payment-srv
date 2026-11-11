@@ -5,6 +5,7 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.entity.OrderStatusHistoryEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.repository.extractor.OrderResultSetExtractor;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,14 @@ public class OrderRepositoryImpl implements OrderRepository {
                 .currency(rs.getString("currency"))
                 .createdAt(rs.getObject("created_at", OffsetDateTime.class))
                 .updatedAt(rs.getObject("updated_at", OffsetDateTime.class))
+                .build();
+    };
+
+    public static final RowMapper<OrderStatusHistoryEntity> ORDER_STATUS_HISTORY_ROW_MAPPER = (rs, rowNum) -> {
+        return OrderStatusHistoryEntity.builder()
+                .oldStatus(rs.getString("old_status"))
+                .newStatus(rs.getString("new_status"))
+                .changedAt(rs.getObject("changed_at", OffsetDateTime.class))
                 .build();
     };
 
@@ -113,10 +122,39 @@ public class OrderRepositoryImpl implements OrderRepository {
 
         String sql = """
                 UPDATE orders
-                SET status = :status
+                SET status = :status,
+                updated_at = CURRENT_TIMESTAMP
                 WHERE id = :id
                 """;
         jdbcTemplate.update(sql, params);
+    }
+
+    @Override
+    public void createOrderStatusHistory(Long id, OrderStatus oldOrderStatus, OrderStatus newOrderStatus) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("oldStatus", oldOrderStatus.name())
+                .addValue("newStatus", newOrderStatus.name())
+                .addValue("orderId", id);
+        String sql = """
+                INSERT INTO order_status_history (order_id, old_status, new_status, changed_at)
+                VALUES(:orderId, :oldStatus, :newStatus, CURRENT_TIMESTAMP)
+                """;
+        jdbcTemplate.update(sql, params);
+    }
+
+    @Override
+    public List<OrderStatusHistoryEntity> findOrderStatusHistory(Long id) {
+        MapSqlParameterSource params = new MapSqlParameterSource("id", id);
+        String sql = """
+                SELECT
+                old_status,
+                new_status,
+                changed_at
+                FROM order_status_history
+                WHERE order_id = :id
+                ORDER BY changed_at DESC
+                """;
+        return jdbcTemplate.query(sql, params, ORDER_STATUS_HISTORY_ROW_MAPPER);
     }
 
     @Override

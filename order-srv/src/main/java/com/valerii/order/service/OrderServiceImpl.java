@@ -5,16 +5,19 @@ import com.valerii.order.exception.InvalidCreateOrderCommandException;
 import com.valerii.order.exception.InvalidOrderStatusException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
+import com.valerii.order.mapper.OrderStatusHistoryMapper;
 import com.valerii.order.model.CreateOrderCommand;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.entity.OrderStatusHistoryEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
 import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
+import com.valerii.order.model.response.status.OrderStatusHistoryResponse;
 import com.valerii.order.repository.order.OrderRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -34,9 +37,10 @@ import static com.valerii.order.model.OrderFactory.createOrder;
 @Validated
 public class OrderServiceImpl implements  OrderService {
 
-    private final OrderRepository orderRepository;
-    private final OrderMapper orderMapper;
     private final Validator validator;
+    private final OrderMapper orderMapper;
+    private final OrderStatusHistoryMapper orderStatusHistoryMapper;
+    private final OrderRepository orderRepository;
 
     @Override
     @Transactional
@@ -111,5 +115,16 @@ public class OrderServiceImpl implements  OrderService {
         OrderStatus.validateTransitionTo(oldOrderStatus, newOrderStatus);
 
         orderRepository.updateStatus(id, newOrderStatus);
+        orderRepository.createOrderStatusHistory(id, oldOrderStatus, newOrderStatus);
+    }
+
+    @Override
+    public List<OrderStatusHistoryResponse> findOrderStatusHistory(Long id) {
+        orderRepository.findById(id)
+                .orElseThrow(() -> new OrderNotFoundException(id));
+
+        List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(id);
+
+        return orderStatusHistoryMapper.toResponseList(orderStatusHistory);
     }
 }
