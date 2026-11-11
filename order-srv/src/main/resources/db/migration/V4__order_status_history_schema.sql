@@ -1,5 +1,6 @@
 CREATE TABLE order_status_history
 (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id     BIGINT NOT NULL,
     old_status   VARCHAR(20) NOT NULL,
     new_status   VARCHAR(20) NOT NULL,
