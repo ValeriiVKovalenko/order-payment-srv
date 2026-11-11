@@ -4,6 +4,7 @@ import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.entity.OrderEntity;
+import com.valerii.order.model.entity.OrderStatusHistoryEntity;
 import com.valerii.order.model.enums.OrderStatus;
 
 import java.util.List;
@@ -24,4 +25,10 @@ public interface OrderRepository {
     String findStatus(Long id);
 
     void updateStatus(Long id, OrderStatus newOrderStatus);
+
+    void createOrderStatusHistory(Long id, OrderStatus oldOrderStatus, OrderStatus newOrderStatus);
+
+    List<OrderStatusHistoryEntity> findOrderStatusHistory(Long id);
+
+    boolean existsById(Long id);
 }

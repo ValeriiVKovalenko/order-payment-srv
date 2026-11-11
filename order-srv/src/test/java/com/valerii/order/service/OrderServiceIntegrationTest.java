@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static java.util.Collections.emptyList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
@@ -188,5 +189,50 @@ public class OrderServiceIntegrationTest {
         String actual = jdbcTemplate.queryForObject(sql, params, String.class);
 
         assertEquals(expected, actual);
+
+        verify(orderRepository).findStatus(orderId);
+        verify(orderRepository).updateStatus(anyLong(), any());
+        verify(orderRepository).createOrderStatusHistory(anyLong(), any(), any());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void updateStatus_shouldRollbackStatus() {
+        Long customerId = 101L;
+        String currency = "USD";
+        CreateOrderCommand createOrderCommand = getCreateOrderCommand(customerId, currency,
+                List.of(getCreateOrderItemCommand("Tea", 2, BigDecimal.valueOf(13.44)),
+                        getCreateOrderItemCommand("Coffee", 1, BigDecimal.valueOf(26.38))));
+        Order savedOrder = orderService.save(createOrderCommand);
+
+        Long orderId = savedOrder.getId();
+        String expected = OrderStatus.PROCESSING.name();
+        UpdateStatusRequestDto requestDto = new UpdateStatusRequestDto(expected);
+        MapSqlParameterSource params = new MapSqlParameterSource("id", orderId);
+
+        try {
+            doThrow(new DataIntegrityViolationException("Test failure"))
+                    .when(orderRepository).createOrderStatusHistory(orderId, OrderStatus.CREATED, OrderStatus.PROCESSING);
+
+            DataIntegrityViolationException exception =
+                    assertThrows(DataIntegrityViolationException.class, () -> orderService.updateStatus(orderId, requestDto));
+            assertEquals("Test failure", exception.getMessage());
+
+            String sql = "SELECT status FROM orders WHERE id = :id";
+            String result = jdbcTemplate.queryForObject(sql, params, String.class);
+            assertEquals("CREATED", result);
+
+            String sql2 = "SELECT count(*) FROM order_status_history WHERE order_id = :id";
+            Long countOrderStatusHistory = jdbcTemplate.queryForObject(sql2, params, Long.class);
+            assertThat(countOrderStatusHistory).isZero();
+
+            verify(orderRepository).findStatus(orderId);
+            verify(orderRepository).updateStatus(anyLong(), any());
+            verify(orderRepository).createOrderStatusHistory(anyLong(), any(), any());
+        } finally {
+            jdbcTemplate.update("DELETE FROM order_items WHERE order_id = :id", params);
+            jdbcTemplate.update("DELETE FROM order_status_history WHERE order_id = :id", params);
+            jdbcTemplate.update("DELETE FROM orders WHERE id = :id", params);
+        }
     }
 }

@@ -3,17 +3,20 @@ package com.valerii.order.service;
 import com.valerii.order.exception.InvalidOrderStatusException;
 import com.valerii.order.exception.OrderNotFoundException;
 import com.valerii.order.mapper.OrderMapper;
+import com.valerii.order.mapper.OrderStatusHistoryMapper;
 import com.valerii.order.model.Order;
 import com.valerii.order.model.OrderFilterDto;
 import com.valerii.order.model.OrderItem;
 import com.valerii.order.model.OrderSummaryDto;
 import com.valerii.order.model.entity.OrderEntity;
 import com.valerii.order.model.entity.OrderItemEntity;
+import com.valerii.order.model.entity.OrderStatusHistoryEntity;
 import com.valerii.order.model.enums.OrderStatus;
 import com.valerii.order.model.request.PageRequestParamDto;
 import com.valerii.order.model.request.UpdateStatusRequestDto;
 import com.valerii.order.model.request.filter.OrderFilterRequestDto;
 import com.valerii.order.model.response.page.PageResponseDto;
+import com.valerii.order.model.response.status.OrderStatusHistoryResponse;
 import com.valerii.order.repository.order.OrderRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -44,9 +48,47 @@ public class OrderServiceTest {
     @Mock
     private OrderMapper orderMapper;
 
+    @Mock
+    private OrderStatusHistoryMapper orderStatusHistoryMapper;
+
     @InjectMocks
     private OrderServiceImpl orderService;
 
+    private static final OffsetDateTime BASE =
+            OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
+
+    private static List<OrderStatusHistoryResponse> historyCompleted() {
+        return List.of(
+                history(OrderStatus.PROCESSING, OrderStatus.COMPLETED, BASE.plusHours(1)),
+                history(OrderStatus.CREATED, OrderStatus.PROCESSING, BASE)
+        );
+    }
+
+    private static List<OrderStatusHistoryEntity> historyEntityCompleted() {
+        return List.of(
+                historyEntity(OrderStatus.PROCESSING.name(), OrderStatus.COMPLETED.name(), BASE.plusHours(1)),
+                historyEntity(OrderStatus.CREATED.name(), OrderStatus.PROCESSING.name(), BASE)
+        );
+    }
+
+    private static OrderStatusHistoryResponse history(
+            OrderStatus from, OrderStatus to, OffsetDateTime changedAt) {
+        return OrderStatusHistoryResponse.builder()
+                .fromStatus(from)
+                .toStatus(to)
+                .changedAt(changedAt)
+                .build();
+    }
+
+    private static OrderStatusHistoryEntity historyEntity(
+            String from, String to, OffsetDateTime changedAt) {
+        return OrderStatusHistoryEntity.builder()
+                .oldStatus(from)
+                .newStatus(to)
+                .changedAt(changedAt)
+                .build();
+    }
 
     @Test
     void findById_shouldReturnOrder_whenExists() {
@@ -254,6 +296,68 @@ public class OrderServiceTest {
         // then
         verify(orderRepository).findStatus(orderId);
         verify(orderRepository, never()).updateStatus(anyLong(), any());
+        verify(orderRepository, never()).createOrderStatusHistory(anyLong(), any(), any());
+    }
+
+    @Test
+    void findOrderStatusHistory_shouldThrowException_whenOrderIdNotFound() {
+        //given
+        Long orderId = 1L;
+        String message = "Order with id `" + orderId + "` not found";
+        assertThatThrownBy(() -> orderService.findOrderStatusHistory(orderId))
+                .isInstanceOf(OrderNotFoundException.class)
+                .hasMessage(message);
+
+        //then
+        verify(orderRepository, never()).findOrderStatusHistory(orderId);
+        verify(orderStatusHistoryMapper, never()).toResponseList(anyList()) ;
+    }
+
+    @Test
+    void findOrderStatusHistory_shouldReturnOrderStatusHistoryList() {
+        //given
+        Long orderId = 1L;
+        when(orderRepository.existsById(orderId)).thenReturn(true);
+
+        List<OrderStatusHistoryEntity> orderStatusHistoryEntities = historyEntityCompleted();
+        when(orderRepository.findOrderStatusHistory(orderId)).thenReturn(orderStatusHistoryEntities);
+
+        List<OrderStatusHistoryResponse> expected = historyCompleted();
+        when(orderStatusHistoryMapper.toResponseList(orderStatusHistoryEntities)).thenReturn(expected);
+
+        //when
+        List<OrderStatusHistoryResponse> result = orderService.findOrderStatusHistory(orderId);
+
+        //then
+        assertThat(result).extracting(OrderStatusHistoryResponse::getFromStatus, OrderStatusHistoryResponse::getToStatus)
+                .containsExactly(
+                        tuple(OrderStatus.PROCESSING, OrderStatus.COMPLETED),
+                        tuple(OrderStatus.CREATED, OrderStatus.PROCESSING));
+
+        verify(orderRepository).existsById(orderId);
+        verify(orderRepository).findOrderStatusHistory(orderId);
+        verify(orderStatusHistoryMapper).toResponseList(orderStatusHistoryEntities) ;
+    }
+
+    @Test
+    void findOrderStatusHistory_shouldReturnEmptyList() {
+        //given
+        Long orderId = 1L;
+        when(orderRepository.existsById(orderId)).thenReturn(true);
+
+        when(orderRepository.findOrderStatusHistory(orderId)).thenReturn(emptyList());
+
+        when(orderStatusHistoryMapper.toResponseList(emptyList())).thenReturn(emptyList());
+
+        //when
+        List<OrderStatusHistoryResponse> result = orderService.findOrderStatusHistory(orderId);
+
+        //then
+        assertThat(result).isEmpty();
+
+        verify(orderRepository).existsById(orderId);
+        verify(orderRepository).findOrderStatusHistory(orderId);
+        verify(orderStatusHistoryMapper).toResponseList(emptyList()) ;
     }
 
     private OrderItemEntity getItemEntity(Long id, Long orderId, String productName, int quantity,
