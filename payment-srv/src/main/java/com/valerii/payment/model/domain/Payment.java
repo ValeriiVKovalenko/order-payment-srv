@@ -1,4 +1,4 @@
-package com.valerii.payment.model.domen;
+package com.valerii.payment.model.domain;
 
 import com.valerii.payment.model.enums.PaymentStatus;
 import lombok.Builder;

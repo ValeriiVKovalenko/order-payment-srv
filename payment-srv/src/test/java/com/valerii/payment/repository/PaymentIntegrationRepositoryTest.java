@@ -1,7 +1,7 @@
 package com.valerii.payment.repository;
 
 import com.valerii.payment.config.TestcontainersConfiguration;
-import com.valerii.payment.model.domen.Payment;
+import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,15 +85,15 @@ public class PaymentIntegrationRepositoryTest {
 
         //then
         assertThat(result).isNotNull();
-        assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getCreatedAt()).isNotNull();
-        assertThat(saved.getUpdatedAt()).isNotNull();
+        assertThat(result.getId()).isNotNull();
+        assertThat(result.getCreatedAt()).isNotNull();
+        assertThat(result.getUpdatedAt()).isNotNull();
 
-        assertEquals(paymentId, saved.getId());
-        assertEquals(payment.getOrderId(), saved.getOrderId());
-        assertEquals(0, payment.getAmount().compareTo(saved.getAmount()));
-        assertEquals(payment.getCurrency(), saved.getCurrency());
-        assertEquals(payment.getStatus().name(), saved.getStatus());
+        assertEquals(paymentId, result.getId());
+        assertEquals(payment.getOrderId(), result.getOrderId());
+        assertEquals(0, payment.getAmount().compareTo(result.getAmount()));
+        assertEquals(payment.getCurrency(), result.getCurrency());
+        assertEquals(payment.getStatus().name(), result.getStatus());
     }
 
     @Test

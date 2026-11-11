@@ -1,6 +1,6 @@
 package com.valerii.payment.repository;
 
-import com.valerii.payment.model.domen.Payment;
+import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 
 import java.util.List;

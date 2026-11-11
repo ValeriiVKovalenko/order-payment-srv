@@ -1,6 +1,6 @@
 package com.valerii.payment.repository;
 
-import com.valerii.payment.model.domen.Payment;
+import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
