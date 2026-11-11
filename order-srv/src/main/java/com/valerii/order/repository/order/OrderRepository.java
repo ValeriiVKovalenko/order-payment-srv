@@ -29,4 +29,6 @@ public interface OrderRepository {
     void createOrderStatusHistory(Long id, OrderStatus oldOrderStatus, OrderStatus newOrderStatus);
 
     List<OrderStatusHistoryEntity> findOrderStatusHistory(Long id);
+
+    boolean existsById(Long id);
 }

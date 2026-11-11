@@ -304,7 +304,7 @@ public class OrderServiceTest {
         //given
         Long orderId = 1L;
         String message = "Order with id `" + orderId + "` not found";
-        assertThatThrownBy(() -> orderService.findById(orderId))
+        assertThatThrownBy(() -> orderService.findOrderStatusHistory(orderId))
                 .isInstanceOf(OrderNotFoundException.class)
                 .hasMessage(message);
 
@@ -317,14 +317,7 @@ public class OrderServiceTest {
     void findOrderStatusHistory_shouldReturnOrderStatusHistoryList() {
         //given
         Long orderId = 1L;
-
-        OrderEntity orderEntity = getOrderEntity(orderId, 101L, BigDecimal.valueOf(250), "USD", "CREATED",
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                List.of(getItemEntity(1L, orderId, "Tea", 2, BigDecimal.valueOf(50),
-                        BigDecimal.valueOf(100)),  getItemEntity(2L, orderId, "Coffee", 1,
-                        BigDecimal.valueOf(150), BigDecimal.valueOf(150))));
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(orderEntity));
+        when(orderRepository.existsById(orderId)).thenReturn(true);
 
         List<OrderStatusHistoryEntity> orderStatusHistoryEntities = historyEntityCompleted();
         when(orderRepository.findOrderStatusHistory(orderId)).thenReturn(orderStatusHistoryEntities);
@@ -341,7 +334,7 @@ public class OrderServiceTest {
                         tuple(OrderStatus.PROCESSING, OrderStatus.COMPLETED),
                         tuple(OrderStatus.CREATED, OrderStatus.PROCESSING));
 
-        verify(orderRepository).findById(orderId);
+        verify(orderRepository).existsById(orderId);
         verify(orderRepository).findOrderStatusHistory(orderId);
         verify(orderStatusHistoryMapper).toResponseList(orderStatusHistoryEntities) ;
     }
@@ -350,14 +343,7 @@ public class OrderServiceTest {
     void findOrderStatusHistory_shouldReturnEmptyList() {
         //given
         Long orderId = 1L;
-
-        OrderEntity orderEntity = getOrderEntity(orderId, 101L, BigDecimal.valueOf(250), "USD", "CREATED",
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                OffsetDateTime.of(2026, 10, 26, 18, 28, 0, 0, ZoneOffset.UTC),
-                List.of(getItemEntity(1L, orderId, "Tea", 2, BigDecimal.valueOf(50),
-                        BigDecimal.valueOf(100)),  getItemEntity(2L, orderId, "Coffee", 1,
-                        BigDecimal.valueOf(150), BigDecimal.valueOf(150))));
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(orderEntity));
+        when(orderRepository.existsById(orderId)).thenReturn(true);
 
         when(orderRepository.findOrderStatusHistory(orderId)).thenReturn(emptyList());
 
@@ -369,7 +355,7 @@ public class OrderServiceTest {
         //then
         assertThat(result).isEmpty();
 
-        verify(orderRepository).findById(orderId);
+        verify(orderRepository).existsById(orderId);
         verify(orderRepository).findOrderStatusHistory(orderId);
         verify(orderStatusHistoryMapper).toResponseList(emptyList()) ;
     }

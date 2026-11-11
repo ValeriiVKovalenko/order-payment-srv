@@ -120,8 +120,10 @@ public class OrderServiceImpl implements  OrderService {
 
     @Override
     public List<OrderStatusHistoryResponse> findOrderStatusHistory(Long id) {
-        orderRepository.findById(id)
-                .orElseThrow(() -> new OrderNotFoundException(id));
+        boolean isOrderExists = orderRepository.existsById(id);
+        if (!isOrderExists) {
+            throw new OrderNotFoundException(id);
+        }
 
         List<OrderStatusHistoryEntity> orderStatusHistory = orderRepository.findOrderStatusHistory(id);
 

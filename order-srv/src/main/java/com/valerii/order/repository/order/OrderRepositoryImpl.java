@@ -123,7 +123,7 @@ public class OrderRepositoryImpl implements OrderRepository {
         String sql = """
                 UPDATE orders
                 SET status = :status,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = clock_timestamp()
                 WHERE id = :id
                 """;
         jdbcTemplate.update(sql, params);
@@ -137,7 +137,7 @@ public class OrderRepositoryImpl implements OrderRepository {
                 .addValue("orderId", id);
         String sql = """
                 INSERT INTO order_status_history (order_id, old_status, new_status, changed_at)
-                VALUES(:orderId, :oldStatus, :newStatus, CURRENT_TIMESTAMP)
+                VALUES(:orderId, :oldStatus, :newStatus, clock_timestamp())
                 """;
         jdbcTemplate.update(sql, params);
     }
@@ -155,6 +155,19 @@ public class OrderRepositoryImpl implements OrderRepository {
                 ORDER BY changed_at DESC
                 """;
         return jdbcTemplate.query(sql, params, ORDER_STATUS_HISTORY_ROW_MAPPER);
+    }
+
+    @Override
+    public boolean existsById(Long id) {
+        MapSqlParameterSource params = new MapSqlParameterSource("id", id);
+        String sql = """
+                SELECT EXISTS (
+                                SELECT 1
+                                FROM orders
+                                WHERE id = :id
+                            )
+                """;
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, params, Boolean.class));
     }
 
     @Override
