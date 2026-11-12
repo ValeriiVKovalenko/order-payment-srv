@@ -1,7 +1,7 @@
 package com.valerii.payment.repository;
 
-import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
+import com.valerii.payment.model.request.PaymentRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -33,15 +33,14 @@ public class PaymentRepositoryImpl implements PaymentRepository {
     };
 
     @Override
-    public PaymentEntity save(Payment payment) {
+    public PaymentEntity save(PaymentRequestDto payment) {
         MapSqlParameterSource params = new MapSqlParameterSource()
                 .addValue("orderId", payment.getOrderId())
                 .addValue("amount", payment.getAmount())
-                .addValue("currency", payment.getCurrency())
-                .addValue("status", payment.getStatus().name());
+                .addValue("currency", payment.getCurrency());
         String sql = """
-                INSERT INTO payments(order_id, amount, currency, status)
-                VALUES(:orderId, :amount, :currency, :status)
+                INSERT INTO payments(order_id, amount, currency)
+                VALUES(:orderId, :amount, :currency)
                 RETURNING id, order_id, amount, currency, status, created_at, updated_at
                 """;
         return jdbcTemplate.queryForObject(sql, params, PAYMENT_ROW_MAPPER);

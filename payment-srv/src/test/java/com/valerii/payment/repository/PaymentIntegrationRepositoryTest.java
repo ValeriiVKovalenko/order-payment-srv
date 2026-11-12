@@ -4,6 +4,7 @@ import com.valerii.payment.config.TestcontainersConfiguration;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
+import com.valerii.payment.model.request.PaymentRequestDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.valerii.payment.model.PaymentTestData.aPaymentDomain;
+import static com.valerii.payment.model.PaymentTestData.aPaymentRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,8 +41,7 @@ public class PaymentIntegrationRepositoryTest {
     void save_shouldGenerateId() {
         //given
         Long orderId = 100L;
-        Payment payment = aPaymentDomain().orderId(orderId).build();
-        assertThat(payment.getId()).isNull();
+        PaymentRequestDto payment = aPaymentRequest().orderId(orderId).build();
 
         //when
         PaymentEntity saved = paymentRepository.save(payment);

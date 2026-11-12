@@ -3,6 +3,7 @@ package com.valerii.payment.model;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
+import com.valerii.payment.model.request.PaymentRequestDto;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -17,6 +18,12 @@ public final class PaymentTestData {
                 .amount(new BigDecimal("100.00"))
                 .currency("USD")
                 .status(PaymentStatus.PENDING);
+    }
+
+    public static PaymentRequestDto.PaymentRequestDtoBuilder aPaymentRequest() {
+        return PaymentRequestDto.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("USD");
     }
 
     public static PaymentEntity.PaymentEntityBuilder aPaymentEntity() {
