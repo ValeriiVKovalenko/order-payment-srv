@@ -24,7 +24,7 @@ public final class PaymentTestData {
                 .amount(new BigDecimal("100.00"))
                 .currency("USD")
                 .status(PaymentStatus.PENDING.name())
-                .createdAt(OffsetDateTime.of(2026, 1, 1,0, 0, 0 ,0, ZoneOffset.UTC))
-                .updatedAt(OffsetDateTime.of(2026, 1, 1,0, 0, 0 ,0, ZoneOffset.UTC));
+                .createdAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
     }
 }

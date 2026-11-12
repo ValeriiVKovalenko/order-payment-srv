@@ -113,9 +113,9 @@ public class PaymentIntegrationRepositoryTest {
         //given
         Long orderId = 1L;
         Payment first = aPaymentDomain().orderId(orderId).amount(new BigDecimal("200.00")).status(PaymentStatus.PENDING).build();
-        paymentRepository.save(first);
+        PaymentEntity saved1 = paymentRepository.save(first);
         Payment second = aPaymentDomain().orderId(orderId).amount(new BigDecimal("50.00")).status(PaymentStatus.SUCCEEDED).build();
-        paymentRepository.save(second);
+        PaymentEntity saved2 = paymentRepository.save(second);
 
         //when
         List<PaymentEntity> resultList = paymentRepository.findAllByOrderId(orderId);
@@ -129,8 +129,8 @@ public class PaymentIntegrationRepositoryTest {
                         PaymentEntity::getAmount,
                         PaymentEntity::getCurrency)
                 .containsExactly(
-                        tuple(2L, orderId, PaymentStatus.SUCCEEDED.name(), new BigDecimal("50.00"), "USD"),
-                        tuple(1L, orderId, PaymentStatus.PENDING.name(), new BigDecimal("200.00"), "USD")
+                        tuple(saved2.getId(), orderId, PaymentStatus.SUCCEEDED.name(), new BigDecimal("50.00"), "USD"),
+                        tuple(saved1.getId(), orderId, PaymentStatus.PENDING.name(), new BigDecimal("200.00"), "USD")
                 );
     }
 
