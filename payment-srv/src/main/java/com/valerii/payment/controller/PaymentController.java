@@ -1,8 +1,10 @@
 package com.valerii.payment.controller;
 
+import com.valerii.payment.mapper.PaymentCommandMapper;
 import com.valerii.payment.mapper.PaymentResponseMapper;
+import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
-import com.valerii.payment.model.request.PaymentRequestDto;
+import com.valerii.payment.model.request.CreatePaymentRequestDto;
 import com.valerii.payment.model.response.PaymentResponseDto;
 import com.valerii.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -20,10 +22,12 @@ import java.net.URI;
 public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentResponseMapper paymentResponseMapper;
+    private final PaymentCommandMapper paymentCommandMapper;
 
     @PostMapping
-    ResponseEntity<PaymentResponseDto> save(@RequestBody @Valid PaymentRequestDto requestDto) {
-        Payment payment = paymentService.save(requestDto);
+    ResponseEntity<PaymentResponseDto> save(@RequestBody @Valid CreatePaymentRequestDto requestDto) {
+        CreatePaymentCommand paymentCommand = paymentCommandMapper.toCommand(requestDto);
+        Payment payment = paymentService.save(paymentCommand);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(payment.getId())

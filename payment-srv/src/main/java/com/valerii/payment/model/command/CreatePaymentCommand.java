@@ -1,4 +1,4 @@
-package com.valerii.payment.model.request;
+package com.valerii.payment.model.command;
 
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Min;
@@ -13,8 +13,7 @@ import java.math.BigDecimal;
 @Getter
 @Builder
 @RequiredArgsConstructor
-public class PaymentRequestDto {
-
+public class CreatePaymentCommand {
     @NotNull(message = "Order id must not be null")
     @Min(value = 1, message = "Order id must be more than 0")
     private final Long orderId;

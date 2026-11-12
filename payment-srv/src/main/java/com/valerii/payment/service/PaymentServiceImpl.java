@@ -1,9 +1,9 @@
 package com.valerii.payment.service;
 
 import com.valerii.payment.mapper.PaymentDomainMapper;
+import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
-import com.valerii.payment.model.request.PaymentRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,9 +16,10 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentDomainMapper paymentDomainMapper;
 
     @Override
-    public Payment save(PaymentRequestDto request) {
-        PaymentEntity payment = paymentRepository.save(request);
+    public Payment save(CreatePaymentCommand request) {
+        Payment payment = Payment.create(request);
+        PaymentEntity paymentEntity = paymentRepository.save(payment);
 
-        return paymentDomainMapper.toDomain(payment);
+        return paymentDomainMapper.toDomain(paymentEntity);
     }
 }

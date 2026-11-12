@@ -1,13 +1,13 @@
 package com.valerii.payment.repository;
 
+import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
-import com.valerii.payment.model.request.PaymentRequestDto;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface PaymentRepository {
-    PaymentEntity save(PaymentRequestDto payment);
+    PaymentEntity save(Payment payment);
 
     Optional<PaymentEntity> findById(Long id);
 

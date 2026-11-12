@@ -1,5 +1,6 @@
 package com.valerii.payment.model.domain;
 
+import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.enums.PaymentStatus;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,4 +20,13 @@ public class Payment {
     private final PaymentStatus status;
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
+
+    public static Payment create(CreatePaymentCommand command) {
+        return Payment.builder()
+                .orderId(command.getOrderId())
+                .amount(command.getAmount())
+                .currency(command.getCurrency())
+                .status(PaymentStatus.PENDING)
+                .build();
+    }
 }
