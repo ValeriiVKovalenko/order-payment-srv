@@ -1,9 +1,11 @@
 package com.valerii.payment.model;
 
+import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
+import com.valerii.payment.model.response.PaymentResponseDto;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -11,13 +13,16 @@ import java.time.ZoneOffset;
 
 public final class PaymentTestData {
 
-    private PaymentTestData() {}
+    private PaymentTestData() {
+    }
 
     public static Payment.PaymentBuilder aPaymentDomain() {
         return Payment.builder()
                 .amount(new BigDecimal("100.00"))
                 .currency("USD")
-                .status(PaymentStatus.PENDING);
+                .status(PaymentStatus.PENDING)
+                .createdAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
     }
 
     public static PaymentEntity.PaymentEntityBuilder aPaymentEntity() {
@@ -25,7 +30,28 @@ public final class PaymentTestData {
                 .amount(new BigDecimal("100.00"))
                 .currency("USD")
                 .status(PaymentStatus.PENDING.name())
-                .createdAt(OffsetDateTime.of(2026, 1, 1,0, 0, 0 ,0, ZoneOffset.UTC))
-                .updatedAt(OffsetDateTime.of(2026, 1, 1,0, 0, 0 ,0, ZoneOffset.UTC));
+                .createdAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+    }
+
+    public static CreatePaymentRequestDto.CreatePaymentRequestDtoBuilder aCreatePaymentRequest() {
+        return CreatePaymentRequestDto.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("USD");
+    }
+
+    public static PaymentResponseDto.PaymentResponseDtoBuilder aPaymentResponseDto() {
+        return PaymentResponseDto.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("USD")
+                .status(PaymentStatus.PENDING)
+                .createdAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
+    }
+
+    public static CreatePaymentCommand.CreatePaymentCommandBuilder aCreatePaymentCommand() {
+        return CreatePaymentCommand.builder()
+                .amount(new BigDecimal("100.00"))
+                .currency("USD");
     }
 }
