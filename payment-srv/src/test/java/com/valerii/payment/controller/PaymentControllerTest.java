@@ -26,6 +26,7 @@ import java.math.BigDecimal;
 import static com.valerii.payment.model.PaymentTestData.*;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -60,7 +61,7 @@ public class PaymentControllerTest {
                 .orderId(orderId)
                 .amount(amount)
                 .build();
-        when(paymentCommandMapper.toCommand(request)).thenReturn(createPaymentCommand);
+        when(paymentCommandMapper.toCommand(any(CreatePaymentRequestDto.class))).thenReturn(createPaymentCommand);
 
         Long paymentId = 1L;
         Payment paymentDomain = aPaymentDomain().
@@ -90,13 +91,13 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("currency").value("USD"))
                 .andExpect(jsonPath("status").value(PaymentStatus.PENDING.name()))
                 .andExpect(jsonPath("createdAt").value("2026-01-01T00:00:00Z"))
-                .andExpect(jsonPath("createdAt").value("2026-01-01T00:00:00Z"));
+                .andExpect(jsonPath("updatedAt").value("2026-01-01T00:00:00Z"));
     }
 
     @Test
     void save_shouldReturnBadRequest_whenOrderIdIsNull() throws Exception {
         CreatePaymentRequestDto request = aCreatePaymentRequest().build();
-        String errorMessage = "Invalid value `null` for parameter `orderId`";
+        String errorMessage = "orderId: must not be null";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -108,7 +109,7 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "orderId={0} should be rejected")
     @CsvSource({
             "-1",
             "0"
@@ -117,7 +118,7 @@ public class PaymentControllerTest {
         CreatePaymentRequestDto request = aCreatePaymentRequest()
                 .orderId(Long.valueOf(orderId))
                 .build();
-        String errorMessage = "Invalid value `" + orderId + "` for parameter `orderId`";
+        String errorMessage = "orderId: must be more than 0";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -136,7 +137,7 @@ public class PaymentControllerTest {
                 .orderId(orderId)
                 .amount(null)
                 .build();
-        String errorMessage = "Invalid value `null` for parameter `amount`";
+        String errorMessage = "amount: must not be null";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -148,22 +149,44 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "amount={0} should be rejected")
     @CsvSource({
-            "-1",
-            "0",
             "12345678910121316.99",
             "12312.993",
             "23.9991"
     })
-    void save_shouldReturnBadRequest_whenAmountIsInvalid(String amount) throws Exception {
+    void save_shouldReturnBadRequest_whenAmountExceedsAllowedPrecision(String amount) throws Exception {
         Long orderId = 100L;
 
         CreatePaymentRequestDto request = aCreatePaymentRequest()
                 .orderId(orderId)
                 .amount(new BigDecimal(amount))
                 .build();
-        String errorMessage = "Invalid value `" + amount + "` for parameter `amount`";
+        String errorMessage = "amount: must fit NUMERIC(15,2): at most 13 integer digits and 2 decimal places";
+        mockMvc.perform(post("/api/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "amount={0} should be rejected")
+    @CsvSource({
+            "0",
+            "-1"
+    })
+    void save_shouldReturnBadRequest_whenAmountIsNotPositive(String amount) throws Exception {
+        Long orderId = 100L;
+
+        CreatePaymentRequestDto request = aCreatePaymentRequest()
+                .orderId(orderId)
+                .amount(new BigDecimal(amount))
+                .build();
+        String errorMessage = "amount: must be more than 0";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -184,7 +207,7 @@ public class PaymentControllerTest {
                 .orderId(orderId)
                 .currency(currency)
                 .build();
-        String errorMessage = "Invalid value `" + currency + "` for parameter `currency`";
+        String errorMessage = "currency: must be exactly 3 uppercase letters (e.g., USD)";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -204,7 +227,7 @@ public class PaymentControllerTest {
                 .orderId(orderId)
                 .currency(null)
                 .build();
-        String errorMessage = "Invalid value `null` for parameter `currency`";
+        String errorMessage = "currency: must not be null";
         mockMvc.perform(post("/api/v1/payments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))

@@ -21,11 +21,11 @@ public class Payment {
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
 
-    public static Payment create(CreatePaymentCommand command) {
+    public static Payment create(Long orderId, BigDecimal amount, String currency) {
         return Payment.builder()
-                .orderId(command.getOrderId())
-                .amount(command.getAmount())
-                .currency(command.getCurrency())
+                .orderId(orderId)
+                .amount(amount)
+                .currency(currency)
                 .status(PaymentStatus.PENDING)
                 .build();
     }

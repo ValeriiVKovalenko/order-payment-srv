@@ -17,7 +17,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public Payment save(CreatePaymentCommand request) {
-        Payment payment = Payment.create(request);
+        Payment payment = Payment.create(request.getOrderId(), request.getAmount(), request.getCurrency());
         PaymentEntity paymentEntity = paymentRepository.save(payment);
 
         return paymentDomainMapper.toDomain(paymentEntity);

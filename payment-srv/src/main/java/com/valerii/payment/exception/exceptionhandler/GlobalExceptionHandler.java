@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponseDto> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex,
                                                                                      HttpServletRequest request) {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> String.format("Invalid value `%s` for parameter `%s`", error.getRejectedValue(), error.getField()))
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
     }

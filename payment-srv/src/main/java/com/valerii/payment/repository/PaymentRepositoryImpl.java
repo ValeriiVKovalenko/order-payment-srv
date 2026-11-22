@@ -56,7 +56,7 @@ public class PaymentRepositoryImpl implements PaymentRepository {
                 WHERE id = :id
                 """;
         try {
-            return Optional.of(jdbcTemplate.queryForObject(sql, params, PAYMENT_ROW_MAPPER));
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, params, PAYMENT_ROW_MAPPER));
         } catch (EmptyResultDataAccessException ex) {
             return Optional.empty();
         }
