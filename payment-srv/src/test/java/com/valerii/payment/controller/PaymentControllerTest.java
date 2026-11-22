@@ -24,6 +24,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 
 import static com.valerii.payment.model.PaymentTestData.*;
+import static org.hamcrest.Matchers.comparesEqualTo;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,7 +88,7 @@ public class PaymentControllerTest {
 
                 .andExpect(jsonPath("$.id").value(paymentId))
                 .andExpect(jsonPath("$.orderId").value(orderId))
-                .andExpect(jsonPath("amount").value("250.0"))
+                .andExpect(jsonPath("$.amount", comparesEqualTo(250.0)))
                 .andExpect(jsonPath("currency").value("USD"))
                 .andExpect(jsonPath("status").value(PaymentStatus.PENDING.name()))
                 .andExpect(jsonPath("createdAt").value("2026-01-01T00:00:00Z"))

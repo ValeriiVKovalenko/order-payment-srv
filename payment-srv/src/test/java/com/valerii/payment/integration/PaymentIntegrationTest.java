@@ -68,10 +68,10 @@ public class PaymentIntegrationTest {
                 .andExpect(header().exists("Location"))
 
                 .andExpect(jsonPath("$.orderId").value(orderId))
-                .andExpect(jsonPath("currency").value("USD"))
-                .andExpect(jsonPath("status").value(PaymentStatus.PENDING.name()))
-                .andExpect(jsonPath("createdAt").exists())
-                .andExpect(jsonPath("updatedAt").exists())
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists())
                 .andReturn();
 
         String body = result.getResponse().getContentAsString();
