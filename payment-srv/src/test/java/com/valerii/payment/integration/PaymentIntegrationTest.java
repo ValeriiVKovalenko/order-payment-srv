@@ -22,6 +22,7 @@ import java.util.Map;
 
 import static com.valerii.payment.model.PaymentTestData.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.comparesEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -70,6 +71,7 @@ public class PaymentIntegrationTest {
                 .andExpect(jsonPath("$.orderId").value(orderId))
                 .andExpect(jsonPath("$.currency").value("USD"))
                 .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.amount", comparesEqualTo(250.0)))
                 .andExpect(jsonPath("$.createdAt").exists())
                 .andExpect(jsonPath("$.updatedAt").exists())
                 .andReturn();

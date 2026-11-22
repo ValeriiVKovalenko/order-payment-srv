@@ -89,10 +89,10 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.id").value(paymentId))
                 .andExpect(jsonPath("$.orderId").value(orderId))
                 .andExpect(jsonPath("$.amount", comparesEqualTo(250.0)))
-                .andExpect(jsonPath("currency").value("USD"))
-                .andExpect(jsonPath("status").value(PaymentStatus.PENDING.name()))
-                .andExpect(jsonPath("createdAt").value("2026-01-01T00:00:00Z"))
-                .andExpect(jsonPath("updatedAt").value("2026-01-01T00:00:00Z"));
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.createdAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-01-01T00:00:00Z"));
     }
 
     @Test

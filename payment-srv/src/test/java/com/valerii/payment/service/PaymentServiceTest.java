@@ -81,6 +81,7 @@ public class PaymentServiceTest {
         assertThat(actual.getCurrency()).isEqualTo(result.getCurrency());
         assertThat(actual.getStatus()).isEqualTo(result.getStatus());
         assertThat(actual.getCreatedAt()).isEqualTo(result.getCreatedAt());
+        assertThat(actual.getUpdatedAt()).isEqualTo(result.getUpdatedAt());
         assertThat(actual.getAmount()).isEqualByComparingTo(result.getAmount());
 
         verify(paymentDomainMapper).toDomain(entity);
