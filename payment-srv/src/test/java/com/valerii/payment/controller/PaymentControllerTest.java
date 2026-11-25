@@ -19,9 +19,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import static com.valerii.payment.model.PaymentTestData.*;
 import static org.hamcrest.Matchers.comparesEqualTo;
@@ -238,5 +241,56 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.message").value(errorMessage))
                 .andExpect(jsonPath("$.path").value("/api/v1/payments"))
                 .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "paymentId={0} should be rejected")
+    @ValueSource(longs = {0L, -1L})
+    void findById_shouldReturnBadRequest_whenIdIsNotPositive(Long id) throws Exception {
+        String errorMessage = "id: must be more than 0";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments/{id}", id))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void findById_shouldReturnPayment_whenIdIsValid() throws Exception {
+        Long id = 1L;
+        Payment domain = aPaymentDomain()
+                .id(id)
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentService.findById(id)).thenReturn(domain);
+
+        PaymentResponseDto response = aPaymentResponseDto()
+                .id(id)
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentResponseMapper.toResponseDto(domain)).thenReturn(response);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments/{id}", id))
+                .andExpect(status().isOk())
+
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.orderId").value(100L))
+                .andExpect(jsonPath("$.amount", comparesEqualTo(300.0)))
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.createdAt").value("2026-11-25T00:00:00Z"))
+                .andExpect(jsonPath("$.updatedAt").value("2026-11-25T00:00:00Z"));
     }
 }

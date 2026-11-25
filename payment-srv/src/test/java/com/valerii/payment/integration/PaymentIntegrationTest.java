@@ -1,6 +1,7 @@
 package com.valerii.payment.integration;
 
 import com.valerii.payment.config.TestcontainersConfiguration;
+import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
@@ -15,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -95,5 +97,31 @@ public class PaymentIntegrationTest {
         assertThat((BigDecimal) row.get("amount")).isEqualByComparingTo(amount);
         assertThat(row.get("created_at")).isNotNull();
         assertThat(row.get("updated_at")).isNotNull();
+    }
+
+    @Test
+    void findById_shouldReturnPaymentResponse_IdIsValid() throws Exception {
+        Payment paymentDomain = aPaymentDomain()
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .build();
+        PaymentEntity save = paymentRepository.save(paymentDomain);
+        Long id = save.getId();
+
+        String sqlCount = "SELECT count(*) FROM payments WHERE id = ?";
+        Long before = jdbcTemplate.queryForObject(sqlCount, Long.class, id);
+        assertThat(before).isOne();
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments/{id}", id))
+                .andExpect(status().isOk())
+
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.orderId").value(100L))
+                .andExpect(jsonPath("$.currency").value("USD"))
+                .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.amount", comparesEqualTo(300.0)))
+                .andExpect(jsonPath("$.createdAt").exists())
+                .andExpect(jsonPath("$.updatedAt").exists())
+                .andReturn();
     }
 }
