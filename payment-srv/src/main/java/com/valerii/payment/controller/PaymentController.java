@@ -8,12 +8,10 @@ import com.valerii.payment.model.request.CreatePaymentRequestDto;
 import com.valerii.payment.model.response.PaymentResponseDto;
 import com.valerii.payment.service.PaymentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
@@ -25,6 +23,12 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentResponseMapper paymentResponseMapper;
     private final PaymentCommandMapper paymentCommandMapper;
+
+    @GetMapping("/{id}")
+    ResponseEntity<PaymentResponseDto> findById(@PathVariable
+                                                @Positive(message = "must be more than 0") Long id) {
+        return ResponseEntity.ok(paymentResponseMapper.toResponseDto(paymentService.findById(id)));
+    }
 
     @PostMapping
     ResponseEntity<PaymentResponseDto> save(@RequestBody @Valid CreatePaymentRequestDto requestDto) {

@@ -5,4 +5,6 @@ import com.valerii.payment.model.domain.Payment;
 
 public interface PaymentService {
     Payment save(CreatePaymentCommand request);
+
+    Payment findById(Long id);
 }

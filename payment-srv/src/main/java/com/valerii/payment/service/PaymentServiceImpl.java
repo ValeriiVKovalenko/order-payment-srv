@@ -1,5 +1,6 @@
 package com.valerii.payment.service;
 
+import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.mapper.PaymentDomainMapper;
 import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
@@ -19,6 +20,14 @@ public class PaymentServiceImpl implements PaymentService {
     public Payment save(CreatePaymentCommand request) {
         Payment payment = Payment.create(request.getOrderId(), request.getAmount(), request.getCurrency());
         PaymentEntity paymentEntity = paymentRepository.save(payment);
+
+        return paymentDomainMapper.toDomain(paymentEntity);
+    }
+
+    @Override
+    public Payment findById(Long id) {
+        PaymentEntity paymentEntity = paymentRepository.findById(id)
+                .orElseThrow(() -> new PaymentNotFoundException(id));
 
         return paymentDomainMapper.toDomain(paymentEntity);
     }
