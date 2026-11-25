@@ -296,7 +296,7 @@ public class PaymentControllerTest {
     }
 
     @Test
-    void findById_shouldReturnBadRequest_whenIdIsNotFound() throws Exception {
+    void findById_shouldReturnNotFound_whenIdIsNotExist() throws Exception {
         Long id = 350L;
         when(paymentService.findById(id)).thenThrow(new PaymentNotFoundException(id));
         String errorMessage = "Payment with id `" + id + "` not found";
