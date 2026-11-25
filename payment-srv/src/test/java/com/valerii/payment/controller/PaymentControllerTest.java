@@ -1,5 +1,6 @@
 package com.valerii.payment.controller;
 
+import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.exception.exceptionhandler.GlobalExceptionHandler;
 import com.valerii.payment.mapper.PaymentCommandMapper;
 import com.valerii.payment.mapper.PaymentResponseMapper;
@@ -292,5 +293,20 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.status").value(PaymentStatus.PENDING.name()))
                 .andExpect(jsonPath("$.createdAt").value("2026-11-25T00:00:00Z"))
                 .andExpect(jsonPath("$.updatedAt").value("2026-11-25T00:00:00Z"));
+    }
+
+    @Test
+    void findById_shouldReturnBadRequest_whenIdIsNotFound() throws Exception {
+        Long id = 350L;
+        when(paymentService.findById(id)).thenThrow(new PaymentNotFoundException(id));
+        String errorMessage = "Payment with id `" + id + "` not found";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 }
