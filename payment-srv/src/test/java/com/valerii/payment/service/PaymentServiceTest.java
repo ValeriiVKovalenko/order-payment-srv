@@ -17,9 +17,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import static com.valerii.payment.model.PaymentTestData.*;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -137,5 +139,94 @@ public class PaymentServiceTest {
                 .isInstanceOf(PaymentNotFoundException.class);
 
         verify(paymentDomainMapper, never()).toDomain(any());
+    }
+
+    @Test
+    void findAll_shouldReturnPaymentsList_whenOrderIdIsValid() {
+        Long orderId = 100L;
+        PaymentEntity firstPaymentEntity = aPaymentEntity()
+                .id(1L)
+                .orderId(orderId)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING.name())
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        PaymentEntity secondPaymentEntity = aPaymentEntity()
+                .id(2L)
+                .orderId(orderId)
+                .amount(new BigDecimal("100.00"))
+                .status(PaymentStatus.SUCCEEDED.name())
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentRepository.findAllByOrderId(orderId)).thenReturn(List.of(firstPaymentEntity, secondPaymentEntity));
+
+        Payment firstPayment = aPaymentDomain()
+                .id(1L)
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        Payment secondPayment = aPaymentDomain()
+                .id(2L)
+                .orderId(100L)
+                .amount(new BigDecimal("100.00"))
+                .status(PaymentStatus.SUCCEEDED)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentDomainMapper.toDomainList(List.of(firstPaymentEntity, secondPaymentEntity))).thenReturn(List.of(firstPayment, secondPayment));
+
+        List<Payment> result = paymentService.findAll(orderId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.size()).isEqualTo(2);
+
+        Payment firstPaymentResult = result.stream().filter(payment -> payment.getId().equals(1L))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(firstPaymentResult).isNotNull();
+        assertThat(firstPayment.getId()).isEqualTo(firstPaymentResult.getId());
+        assertThat(firstPayment.getOrderId()).isEqualTo(firstPaymentResult.getOrderId());
+        assertThat(firstPayment.getCurrency()).isEqualTo(firstPaymentResult.getCurrency());
+        assertThat(firstPayment.getStatus()).isEqualTo(firstPaymentResult.getStatus());
+        assertThat(firstPayment.getCreatedAt()).isEqualTo(firstPaymentResult.getCreatedAt());
+        assertThat(firstPayment.getUpdatedAt()).isEqualTo(firstPaymentResult.getUpdatedAt());
+        assertThat(firstPayment.getAmount()).isEqualByComparingTo(firstPaymentResult.getAmount());
+
+        Payment secondPaymentResult = result.stream().filter(payment -> payment.getId().equals(2L))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(secondPaymentResult).isNotNull();
+        assertThat(secondPayment.getId()).isEqualTo(secondPaymentResult.getId());
+        assertThat(secondPayment.getOrderId()).isEqualTo(secondPaymentResult.getOrderId());
+        assertThat(secondPayment.getCurrency()).isEqualTo(secondPaymentResult.getCurrency());
+        assertThat(secondPayment.getStatus()).isEqualTo(secondPaymentResult.getStatus());
+        assertThat(secondPayment.getCreatedAt()).isEqualTo(secondPaymentResult.getCreatedAt());
+        assertThat(secondPayment.getUpdatedAt()).isEqualTo(secondPaymentResult.getUpdatedAt());
+        assertThat(secondPayment.getAmount()).isEqualByComparingTo(secondPaymentResult.getAmount());
+    }
+
+
+    @Test
+    void findAll_shouldReturnEmptyList() {
+        Long orderId = 100L;
+        when(paymentRepository.findAllByOrderId(orderId)).thenReturn(emptyList());
+
+        when(paymentDomainMapper.toDomainList(emptyList())).thenReturn(emptyList());
+
+        List<Payment> result = paymentService.findAll(orderId);
+
+        assertThat(result).isNotNull();
+        assertThat(result).isEmpty();
     }
 }

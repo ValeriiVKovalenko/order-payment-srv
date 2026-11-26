@@ -6,6 +6,7 @@ import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -46,7 +48,7 @@ public class PaymentIntegrationTest {
     @Autowired
     private PaymentRepository paymentRepository;
 
-    @BeforeEach
+    @AfterEach
     void cleanUp() {
         jdbcTemplate.execute("TRUNCATE TABLE payments RESTART IDENTITY CASCADE");
     }
@@ -123,5 +125,34 @@ public class PaymentIntegrationTest {
                 .andExpect(jsonPath("$.createdAt").exists())
                 .andExpect(jsonPath("$.updatedAt").exists())
                 .andReturn();
+    }
+
+    @Test
+    @Sql("/sql/payments/payments-50.sql")
+    void findAll_shouldReturnPaymentListResponse_whenOrderIdIsValid() throws Exception {
+        Long orderId = 20L;
+        String sqlCount = "SELECT count(*) FROM payments WHERE order_id = ?";
+        Long before = jdbcTemplate.queryForObject(sqlCount, Long.class, orderId);
+        assertThat(before).isEqualTo(2);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments")
+                        .param("orderId", orderId.toString()))
+                .andExpect(status().isOk())
+
+                .andExpect(jsonPath("$.[0].id").value(30))
+                .andExpect(jsonPath("$.[0].orderId").value(orderId))
+                .andExpect(jsonPath("$.[0].currency").value("EUR"))
+                .andExpect(jsonPath("$.[0].status").value(PaymentStatus.SUCCEEDED.name()))
+                .andExpect(jsonPath("$.[0].amount", comparesEqualTo(252.40)))
+                .andExpect(jsonPath("$.[0].createdAt").exists())
+                .andExpect(jsonPath("$.[0].updatedAt").exists())
+
+                .andExpect(jsonPath("$.[1].id").value(29))
+                .andExpect(jsonPath("$.[1].orderId").value(orderId))
+                .andExpect(jsonPath("$.[1].currency").value("EUR"))
+                .andExpect(jsonPath("$.[1].status").value(PaymentStatus.FAILED.name()))
+                .andExpect(jsonPath("$.[1].amount", comparesEqualTo(252.40)))
+                .andExpect(jsonPath("$.[1].createdAt").exists())
+                .andExpect(jsonPath("$.[1].updatedAt").exists());
     }
 }

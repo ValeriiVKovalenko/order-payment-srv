@@ -9,6 +9,8 @@ import com.valerii.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
@@ -30,5 +32,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new PaymentNotFoundException(id));
 
         return paymentDomainMapper.toDomain(paymentEntity);
+    }
+
+    @Override
+    public List<Payment> findAll(Long orderId) {
+        List<PaymentEntity> entities = paymentRepository.findAllByOrderId(orderId);
+        return paymentDomainMapper.toDomainList(entities);
     }
 }

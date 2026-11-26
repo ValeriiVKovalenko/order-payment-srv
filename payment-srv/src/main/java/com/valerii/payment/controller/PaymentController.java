@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -23,6 +24,13 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentResponseMapper paymentResponseMapper;
     private final PaymentCommandMapper paymentCommandMapper;
+
+    @GetMapping
+    ResponseEntity<List<PaymentResponseDto>> findAll(@RequestParam
+                                                     @Positive(message = "must be more than 0") Long orderId) {
+
+        return ResponseEntity.ok(paymentResponseMapper.toResponseDtoList(paymentService.findAll(orderId)));
+    }
 
     @GetMapping("/{id}")
     ResponseEntity<PaymentResponseDto> findById(@PathVariable
