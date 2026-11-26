@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -48,6 +49,13 @@ public class GlobalExceptionHandler {
                         .map(error -> result.getMethodParameter().getParameterName() + ": " +
                                 error.getDefaultMessage()))
                 .collect(Collectors.joining("; "));
+        return build(HttpStatus.BAD_REQUEST, errorMessage, request);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex,
+                                                                                             HttpServletRequest request) {
+        String errorMessage = "Required parameter '%s' is missing".formatted(ex.getParameterName());
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
     }
 

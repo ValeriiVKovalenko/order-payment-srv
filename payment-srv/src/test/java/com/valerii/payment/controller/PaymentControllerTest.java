@@ -26,10 +26,11 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 
 import static com.valerii.payment.model.PaymentTestData.*;
-import static org.hamcrest.Matchers.comparesEqualTo;
-import static org.hamcrest.Matchers.endsWith;
+import static java.util.Collections.emptyList;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -307,6 +308,128 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message").value(errorMessage))
                 .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void findAll_shouldReturnPaymentList_whenOrderIdIsValid() throws Exception {
+
+        Long orderId = 100L;
+        Payment firstPayment = aPaymentDomain()
+                .id(1L)
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        Payment secondPayment = aPaymentDomain()
+                .id(2L)
+                .orderId(100L)
+                .amount(new BigDecimal("100.00"))
+                .status(PaymentStatus.SUCCEEDED)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentService.findAll(orderId)).thenReturn(List.of(firstPayment, secondPayment));
+
+        PaymentResponseDto firstResponse = aPaymentResponseDto()
+                .id(1L)
+                .orderId(100L)
+                .amount(new BigDecimal("300.00"))
+                .status(PaymentStatus.PENDING)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 25, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        PaymentResponseDto secondResponse = aPaymentResponseDto()
+                .id(2L)
+                .orderId(100L)
+                .amount(new BigDecimal("100.00"))
+                .status(PaymentStatus.SUCCEEDED)
+                .currency("USD")
+                .createdAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .updatedAt(OffsetDateTime.of(2026, 11, 26, 0, 0, 0, 0, ZoneOffset.UTC))
+                .build();
+        when(paymentResponseMapper.toResponseDtoList(List.of(firstPayment, secondPayment)))
+                .thenReturn(List.of(firstResponse, secondResponse));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments")
+                        .param("orderId", "100"))
+                .andExpect(status().isOk())
+
+                .andExpect(jsonPath("$.[0].id").value(1))
+                .andExpect(jsonPath("$.[0].orderId").value(100L))
+                .andExpect(jsonPath("$.[0].amount", comparesEqualTo(300.0)))
+                .andExpect(jsonPath("$.[0].currency").value("USD"))
+                .andExpect(jsonPath("$.[0].status").value(PaymentStatus.PENDING.name()))
+                .andExpect(jsonPath("$.[0].createdAt").value("2026-11-25T00:00:00Z"))
+                .andExpect(jsonPath("$.[0].updatedAt").value("2026-11-25T00:00:00Z"))
+
+                .andExpect(jsonPath("$.[1].id").value(2))
+                .andExpect(jsonPath("$.[1].orderId").value(100L))
+                .andExpect(jsonPath("$.[1].amount", comparesEqualTo(100.0)))
+                .andExpect(jsonPath("$.[1].currency").value("USD"))
+                .andExpect(jsonPath("$.[1].status").value(PaymentStatus.SUCCEEDED.name()))
+                .andExpect(jsonPath("$.[1].createdAt").value("2026-11-26T00:00:00Z"))
+                .andExpect(jsonPath("$.[1].updatedAt").value("2026-11-26T00:00:00Z"));
+    }
+
+    @Test
+    void findAll_shouldReturnBadRequest_whenParamMiss() throws Exception {
+        String errorMessage = "Required parameter 'orderId' is missing";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void findAll_shouldReturnEmptyPaymentList() throws Exception {
+        Long orderId = 100L;
+        when(paymentService.findAll(orderId)).thenReturn(emptyList());
+
+        when(paymentResponseMapper.toResponseDtoList(emptyList())).thenReturn(emptyList());
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments")
+                        .param("orderId", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @ParameterizedTest(name = "orderId={0} should be rejected")
+    @ValueSource(longs = {-1L, 0L})
+    void findAll_shouldReturnBadRequest_whenOrderIdIsNotPositive(Long orderId) throws Exception {
+        String errorMessage = "orderId: must be more than 0";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments")
+                        .param("orderId", orderId.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "orderId={0} should be rejected")
+    @ValueSource(strings = {"abc", "parameter"})
+    void findAll_shouldReturnBadRequest_whenOrderIdIsInvalid(String orderId) throws Exception {
+        String errorMessage = "Invalid value `%s` for parameter `%s`".formatted(orderId, "orderId");
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/payments")
+                        .param("orderId", orderId))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 }
