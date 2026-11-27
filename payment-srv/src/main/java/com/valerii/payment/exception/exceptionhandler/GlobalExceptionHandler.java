@@ -1,6 +1,8 @@
 package com.valerii.payment.exception.exceptionhandler;
 
+import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
+import com.valerii.payment.exception.InvalidPaymentStatusException;
 import com.valerii.payment.model.response.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +59,18 @@ public class GlobalExceptionHandler {
                                                                                              HttpServletRequest request) {
         String errorMessage = "Required parameter '%s' is missing".formatted(ex.getParameterName());
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
+    }
+
+    @ExceptionHandler(InvalidPaymentUpdateStatusException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidPaymentUpdateStatusException(InvalidPaymentUpdateStatusException ex,
+                                                                                         HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidPaymentStatusException.class)
+    public ResponseEntity<ApiErrorResponseDto> handlePaymentStatusNotFoundException(InvalidPaymentStatusException ex,
+                                                                                    HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {

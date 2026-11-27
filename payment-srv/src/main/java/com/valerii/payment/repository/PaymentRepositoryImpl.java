@@ -73,4 +73,34 @@ public class PaymentRepositoryImpl implements PaymentRepository {
                 """;
         return jdbcTemplate.query(sql, params, PAYMENT_ROW_MAPPER);
     }
+
+    @Override
+    public Optional<String> findStatusById(Long id) {
+        MapSqlParameterSource params = new MapSqlParameterSource("id", id);
+        String sql = """
+                SELECT status
+                FROM payments
+                WHERE id = :id 
+                FOR UPDATE
+                """;
+        try  {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, params, String.class));
+        } catch (EmptyResultDataAccessException ex) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public void updateStatusById(Long id, String status) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("status", status)
+                .addValue("id", id);
+        String sql = """
+                UPDATE payments
+                SET status = :status,
+                updated_at = clock_timestamp()
+                WHERE id = :id
+                """;
+        jdbcTemplate.update(sql, params);
+    }
 }

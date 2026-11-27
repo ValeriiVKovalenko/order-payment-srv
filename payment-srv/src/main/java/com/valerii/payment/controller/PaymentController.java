@@ -5,6 +5,7 @@ import com.valerii.payment.mapper.PaymentResponseMapper;
 import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
+import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.model.response.PaymentResponseDto;
 import com.valerii.payment.service.PaymentService;
 import jakarta.validation.Valid;
@@ -24,6 +25,13 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentResponseMapper paymentResponseMapper;
     private final PaymentCommandMapper paymentCommandMapper;
+
+    @PatchMapping("/{id}/status")
+    ResponseEntity<Void> updateStatus(@PathVariable @Positive(message = "must be more than 0") Long id,
+                                      @RequestBody @Valid UpdateStatusRequestDto request) {
+        paymentService.updateStatus(id, request);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping
     ResponseEntity<List<PaymentResponseDto>> findAll(@RequestParam
