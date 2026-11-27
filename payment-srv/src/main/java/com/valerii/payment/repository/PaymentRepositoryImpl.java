@@ -80,8 +80,7 @@ public class PaymentRepositoryImpl implements PaymentRepository {
         String sql = """
                 SELECT status
                 FROM payments
-                WHERE id = :id 
-                FOR UPDATE
+                WHERE id = :id FOR UPDATE
                 """;
         try  {
             return Optional.ofNullable(jdbcTemplate.queryForObject(sql, params, String.class));

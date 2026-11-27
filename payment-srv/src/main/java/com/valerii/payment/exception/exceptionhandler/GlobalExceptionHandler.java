@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -48,8 +49,15 @@ public class GlobalExceptionHandler {
                                                                                       HttpServletRequest request) {
         String errorMessage = ex.getParameterValidationResults().stream()
                 .flatMap(result -> result.getResolvableErrors().stream()
-                        .map(error -> result.getMethodParameter().getParameterName() + ": " +
-                                error.getDefaultMessage()))
+                        .map(error -> {
+                            String name;
+                            if (error instanceof FieldError fieldError) {
+                                name = fieldError.getField();
+                            } else {
+                                name = result.getMethodParameter().getParameterName();
+                            }
+                            return name + ": " + error.getDefaultMessage();
+                        }))
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
     }
