@@ -5,9 +5,9 @@ import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
+import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,11 +22,13 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.Map;
 
 import static com.valerii.payment.model.PaymentTestData.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.comparesEqualTo;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -154,5 +156,32 @@ public class PaymentIntegrationTest {
                 .andExpect(jsonPath("$.[1].amount", comparesEqualTo(252.40)))
                 .andExpect(jsonPath("$.[1].createdAt").exists())
                 .andExpect(jsonPath("$.[1].updatedAt").exists());
+    }
+
+    @Test
+    @Sql("/sql/payments/payments-50.sql")
+    void updateStatus_shouldReturnNoContent_whenStatusIsValid() throws Exception {
+        Long id = 6L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("SUCCEEDED")
+                .build();
+
+        PaymentEntity paymentEntityBefore = paymentRepository.findById(id).orElseThrow();
+        String statusBefore = paymentEntityBefore.getStatus();
+        assertThat(statusBefore).isEqualTo(PaymentStatus.PENDING.name());
+
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        PaymentEntity paymentEntityAfter = paymentRepository.findById(id).orElseThrow();
+        String statusAfter = paymentEntityAfter.getStatus();
+        assertThat(statusAfter).isEqualTo(PaymentStatus.SUCCEEDED.name());
+
+        OffsetDateTime updatedAtBefore = paymentEntityBefore.getUpdatedAt();
+        OffsetDateTime updatedAtAfter= paymentEntityAfter.getUpdatedAt();
+
+        assertThat(updatedAtAfter).isAfter(updatedAtBefore);
     }
 }
