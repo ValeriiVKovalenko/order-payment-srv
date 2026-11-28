@@ -29,7 +29,7 @@
 | TASK-17 | Retrieve a payment by ID via REST API | Done | PR #17, merged 2026-11-25 |
 | TASK-18 | Retrieve payments by Order ID via REST API | Done | PR #18, merged 2026-11-26 |
 | TASK-19 | Organize Project Documentation| Done | PR #19, merged 2026-11-27 |
-| TASK-20 | Update Payment Status via REST API| Done | PR #19, merged 2026-11-28 |
+| TASK-20 | Update Payment Status via REST API| In Review | PR #20, open|
 
 ### Историческое исключение: TASK-1
 

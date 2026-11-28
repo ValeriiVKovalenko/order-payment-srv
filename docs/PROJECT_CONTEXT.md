@@ -224,8 +224,8 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 
 ## 7. Архитектура `payment-srv`
 
-payment-srv — отдельное Spring Boot приложение с собственной базой payment_db. Реализованы persistence, REST API создания и чтения платежей, а также REST API изменения статуса платежа.
-
+payment-srv — отдельное Spring Boot приложение с собственной базой payment_db. .Отвечает за выполнение use cases создания платежа, получения платежей и изменения статуса платежа.
+Сервис содержит бизнес-логику изменения статуса, проверяет допустимость переходов и обеспечивает выполнение операции в транзакции.
 Основные компоненты:
 
 - `controller/PaymentController` — REST endpoints;
@@ -258,17 +258,16 @@ payment-srv — отдельное Spring Boot приложение с собс�
 - `SUCCEEDED`;
 - `FAILED`.
 
-
-|Текущий статус | Новый статус | Результат |
+| Текущий статус | Новый статус | Результат |
 |---|---|---|
-| PENDING | SUCCEEDED| Разрешён |
-| PENDING | FAILED| Разрешён|
-| SUCCEEDED | SUCCEEDED | Идемпотентный вызов |
-| FAILED | FAILED | Идемпотентный вызов |
-| SUCCEEDED | FAILED / PENDING | Запрещён |
-| FAILED | SUCCEEDED / PENDING | Запрещён |
+| `PENDING` | `SUCCEEDED` | Разрешён |
+| `PENDING` | `FAILED` | Разрешён |
+| `SUCCEEDED` | `FAILED` | Запрещён |
+| `SUCCEEDED` | `PENDING` | Запрещён |
+| `FAILED` | `SUCCEEDED` | Запрещён |
+| `FAILED` | `PENDING` | Запрещён |
 
-SUCCEEDED и FAILED являются терминальными состояниями.
+`SUCCEEDED` и `FAILED` являются терминальными состояниями.
 
 Повторная установка текущего статуса идемпотентна: SQL UPDATE не выполняется.
 
@@ -283,8 +282,8 @@ SUCCEEDED и FAILED являются терминальными состояни
 - `save(Payment payment)` — сохраняет платёж и возвращает `PaymentEntity`;
 - `findById(Long id)` — возвращает `Optional<PaymentEntity>`;
 - `findAllByOrderId(Long orderId)` — возвращает список платежей заказа.
-- `findStatusById(Long id)` — читает текущий статус платежа с блокировкой строки через SELECT ... FOR UPDATE;.
-- `updateStatusById(Long id, PaymentStatus status)` — обновляет статус платежа и updated_at.
+- `findStatusById(Long id)` — читает текущий статус платежа с блокировкой строки через `SELECT ... FOR UPDATE`.
+- `updateStatusById(Long id, String status)` — обновляет статус платежа и updated_at.
 
 Изменение статуса выполняется в транзакции. Чтение текущего статуса и последующее обновление защищены блокировкой строки.
 
@@ -322,8 +321,6 @@ SUCCEEDED и FAILED являются терминальными состояни
 `GET /api/v1/payments?orderId={orderId}` требует положительный `orderId`. Возвращает `200 OK` со списком платежей. Если платежей для заказа нет, возвращается пустой список. Некорректный или отсутствующий параметр обрабатывается как `400 Bad Request`.
 
 Поля `PaymentResponseDto`: `id`, `orderId`, `amount`, `currency`, `status`, `createdAt`, `updatedAt`.
-
-На состоянии после TASK-18 не описаны endpoint изменения статуса платежа или отдельный payment workflow. Не считать их реализованными.
 
 **Изменение статуса платежа**
 
@@ -384,14 +381,17 @@ Flyway migrations находятся в `payment-srv/src/main/resources/db/migra
 - `PaymentIntegrationRepositoryTest` — integration tests repository;
 - `PaymentControllerTest` — REST endpoints и validation;
 - `PaymentServiceTest` — service layer;
-- `PaymentIntegrationTest` — интеграционные сценарии, включая изменение статусов и конкурентное выполнение запросов;
+- `PaymentIntegrationTest` —  integration tests сценариев работы с платежами, включая создание, получение, изменение статуса и проверку допустимых переходов;
 - `PaymentTestData` — тестовые данные;
+- `PaymentServiceConcurrencyIntegrationTest` — проверка конкурентного изменения статуса платежа;
 -  проверяются допустимые переходы PENDING → SUCCEEDED и PENDING → FAILED;
 -  проверяются идемпотентные вызовы и запрещённые переходы;
 -  concurrency test использует PostgreSQL Testcontainers для проверки поведения при конкурентном изменении статуса.
 - `TestcontainersConfiguration` — конфигурация PostgreSQL Testcontainers.
 
 В описание механизма завершения executor не добавляю утверждение о гарантированном завершении потоков при прерывании: реализация восстанавливает interrupt flag после shutdownNow(), но повторного ожидания завершения в этом сценарии нет.
+
+Для integration tests используется PostgreSQL 16 через Testcontainers.
 
 Наличие тестов в репозитории не доказывает их успешный запуск в рамках текущей сверки. Не утверждать, что `./gradlew test` или `./gradlew clean build` прошли, если запуск не был выполнен или пользователь не предоставил результат.
 
