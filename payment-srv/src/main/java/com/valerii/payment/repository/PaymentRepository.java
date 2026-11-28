@@ -12,4 +12,8 @@ public interface PaymentRepository {
     Optional<PaymentEntity> findById(Long id);
 
     List<PaymentEntity> findAllByOrderId(Long orderId);
+
+    Optional<String> findStatusById(Long id);
+
+    void updateStatusById(Long id, String status);
 }

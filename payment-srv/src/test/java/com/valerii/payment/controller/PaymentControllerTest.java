@@ -1,5 +1,7 @@
 package com.valerii.payment.controller;
 
+import com.valerii.payment.exception.InvalidPaymentStatusException;
+import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.exception.exceptionhandler.GlobalExceptionHandler;
 import com.valerii.payment.mapper.PaymentCommandMapper;
@@ -8,11 +10,13 @@ import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.enums.PaymentStatus;
 import com.valerii.payment.model.request.CreatePaymentRequestDto;
+import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.model.response.PaymentResponseDto;
 import com.valerii.payment.service.PaymentService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -31,8 +35,10 @@ import java.util.List;
 import static com.valerii.payment.model.PaymentTestData.*;
 import static java.util.Collections.emptyList;
 import static org.hamcrest.Matchers.*;
-import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -430,6 +436,150 @@ public class PaymentControllerTest {
                 .andExpect(jsonPath("$.error").value("Bad Request"))
                 .andExpect(jsonPath("$.message").value(errorMessage))
                 .andExpect(jsonPath("$.path").value("/api/v1/payments"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"PENDING", "SUCCEEDED", "FAILED", "pending", "PENding", "PENDINg"})
+    void updateStatus_shouldReturnNoContentStatus(String status) throws Exception {
+        Long id = 10L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status(status)
+                .build();
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+    }
+
+    @ParameterizedTest(name = "id={0} should be rejected")
+    @ValueSource(strings = {"abc", "ABC", "12A"})
+    void updateStatus_shouldReturnBadRequest_whenPaymentIdIsNotValid(String id) throws Exception {
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+        String errorMessage = "Invalid value `%s` for parameter `%s`".formatted(id, "id");
+
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"", " "})
+    @NullSource
+    void updateStatus_shouldReturnBadRequest_whenStatusIsNotValid(String status) throws Exception {
+        Long id = 20L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status(status)
+                .build();
+        String errorMessage = "status: must be not an empty line";
+
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "id={0} should be rejected")
+    @ValueSource(strings = {"0", "-1"})
+    void updateStatus_shouldReturnBadRequest_whenIdIsNotPositive(String id) throws Exception {
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+        String errorMessage = "id: must be more than 0";
+
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void updateStatus_shouldReturnNotFound_whenIdIsNotExist() throws Exception {
+        Long id = 20L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+
+        doThrow(new PaymentNotFoundException(id))
+                .when(paymentService)
+                .updateStatus(id, request);
+
+        String errorMessage = "Payment with id `" + id + "` not found";
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"Pendingg", "Unknown", "SUCCEDED", "FAIL", "ABC"})
+    void updateStatus_shouldReturnBadRequest_whenStatusIsUnknown(String status) throws Exception {
+        Long id = 20L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status(status)
+                .build();
+
+        doThrow(new InvalidPaymentStatusException(status))
+                .when(paymentService)
+                .updateStatus(id, request);
+
+        String errorMessage = "Status '" + status + "' is unknown";
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void updateStatus_shouldReturnBadRequest_whenStatusCanNotBeTransition() throws Exception {
+        Long id = 20L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+
+        PaymentStatus oldStatus = PaymentStatus.FAILED;
+        PaymentStatus newStatus = PaymentStatus.PENDING;
+        doThrow(new InvalidPaymentUpdateStatusException(oldStatus, newStatus))
+                .when(paymentService)
+                .updateStatus(id, request);
+
+        String errorMessage = "Can not update status from '" + oldStatus + "' to '" + newStatus + "'";
+        mockMvc.perform(patch("/api/v1/payments/{id}/status", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value(errorMessage))
+                .andExpect(jsonPath("$.path").value("/api/v1/payments/" + id + "/status"))
                 .andExpect(jsonPath("$.timestamp").exists());
     }
 }

@@ -28,6 +28,8 @@
 | TASK-16 | Add GitHub Actions CI for Gradle build | Done | PR #16, merged 2026-11-24 |
 | TASK-17 | Retrieve a payment by ID via REST API | Done | PR #17, merged 2026-11-25 |
 | TASK-18 | Retrieve payments by Order ID via REST API | Done | PR #18, merged 2026-11-26 |
+| TASK-19 | Organize Project Documentation| Done | PR #19, merged 2026-11-27 |
+| TASK-20 | Update Payment Status via REST API| In Review | PR #20, open|
 
 ### Историческое исключение: TASK-1
 
@@ -41,7 +43,7 @@ PR #1 не был влит в `develop` и не является подтвер�
 
 ## Текущее состояние
 
-После TASK-18 в `develop` присутствуют два Spring Boot сервиса:
+После TASK-20 в `develop` присутствуют два Spring Boot сервиса:
 
 - `order-srv` — API создания и управления заказами, включая получение списка, фильтрацию, пагинацию, переходы статусов и историю статусов;
 - `payment-srv` — persistence платежей и REST API создания и чтения платежей по ID платежа и ID заказа.

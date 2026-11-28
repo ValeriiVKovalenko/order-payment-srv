@@ -1,14 +1,20 @@
 package com.valerii.payment.service;
 
+import com.valerii.payment.exception.DataConsistencyException;
+import com.valerii.payment.exception.InvalidPaymentStatusException;
+import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.mapper.PaymentDomainMapper;
 import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
+import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -216,7 +222,6 @@ public class PaymentServiceTest {
         assertThat(secondPayment.getAmount()).isEqualByComparingTo(secondPaymentResult.getAmount());
     }
 
-
     @Test
     void findAll_shouldReturnEmptyList() {
         Long orderId = 100L;
@@ -228,5 +233,99 @@ public class PaymentServiceTest {
 
         assertThat(result).isNotNull();
         assertThat(result).isEmpty();
+    }
+
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"SUCCEEDED", "FAILED"})
+    void updateStatus_shouldUpdateStatus_whenPaymentExists(String status) {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status(status)
+                .build();
+        String statusBefore = PaymentStatus.PENDING.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(statusBefore));
+
+        String newStatus = request.getStatus();
+        doNothing().when(paymentRepository).updateStatusById(id, newStatus);
+
+        paymentService.updateStatus(id, request);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository).updateStatusById(id, newStatus);
+    }
+
+    @Test
+    void updateStatus_shouldThrowInvalidPaymentStatusException_whenStatusIsInvalid() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("UNKNOWN")
+                .build();
+       assertThatThrownBy(() -> paymentService.updateStatus(id, request))
+               .isInstanceOf(InvalidPaymentStatusException.class);
+
+        verify(paymentRepository, never()).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
+
+    @Test
+    void updateStatus_shouldThrowPaymentNotFoundException_whenStatusDoesNotExists() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.updateStatus(id, request))
+                .isInstanceOf(PaymentNotFoundException.class);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
+
+    @Test
+    void updateStatus_shouldThrowDataConsistencyException_whenStatusInDatabaseIsInvalid() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("PENDING")
+                .build();
+        String invalidStatus = "CREATED";
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(invalidStatus));
+
+        assertThatThrownBy(() -> paymentService.updateStatus(id, request))
+                .isInstanceOf(DataConsistencyException.class);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
+
+    @Test
+    void updateStatus_shouldSkipUpdateStatus_whenOldStatusIsEqualNewStatus() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("SUCCEEDED")
+                .build();
+        String status = PaymentStatus.SUCCEEDED.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(status));
+
+        paymentService.updateStatus(id, request);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
+
+    @Test
+    void updateStatus_shouldThrowInvalidPaymentUpdateStatusException_whenTransitionIsFailed() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("SUCCEEDED")
+                .build();
+        String status = PaymentStatus.FAILED.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(status));
+
+        assertThatThrownBy(() -> paymentService.updateStatus(id, request))
+                .isInstanceOf(InvalidPaymentUpdateStatusException.class);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
     }
 }

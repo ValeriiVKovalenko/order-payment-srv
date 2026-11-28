@@ -1,11 +1,15 @@
 package com.valerii.payment.exception.exceptionhandler;
 
+import com.valerii.payment.exception.DataConsistencyException;
+import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
+import com.valerii.payment.exception.InvalidPaymentStatusException;
 import com.valerii.payment.model.response.ApiErrorResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -46,8 +50,15 @@ public class GlobalExceptionHandler {
                                                                                       HttpServletRequest request) {
         String errorMessage = ex.getParameterValidationResults().stream()
                 .flatMap(result -> result.getResolvableErrors().stream()
-                        .map(error -> result.getMethodParameter().getParameterName() + ": " +
-                                error.getDefaultMessage()))
+                        .map(error -> {
+                            String name;
+                            if (error instanceof FieldError fieldError) {
+                                name = fieldError.getField();
+                            } else {
+                                name = result.getMethodParameter().getParameterName();
+                            }
+                            return name + ": " + error.getDefaultMessage();
+                        }))
                 .collect(Collectors.joining("; "));
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
     }
@@ -57,6 +68,24 @@ public class GlobalExceptionHandler {
                                                                                              HttpServletRequest request) {
         String errorMessage = "Required parameter '%s' is missing".formatted(ex.getParameterName());
         return build(HttpStatus.BAD_REQUEST, errorMessage, request);
+    }
+
+    @ExceptionHandler(InvalidPaymentUpdateStatusException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleInvalidPaymentUpdateStatusException(InvalidPaymentUpdateStatusException ex,
+                                                                                         HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidPaymentStatusException.class)
+    public ResponseEntity<ApiErrorResponseDto> handlePaymentStatusNotFoundException(InvalidPaymentStatusException ex,
+                                                                                    HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DataConsistencyException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleDataConsistencyException(DataConsistencyException ex,
+                                                                              HttpServletRequest request) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {
