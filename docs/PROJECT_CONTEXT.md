@@ -224,7 +224,7 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 
 ## 7. Архитектура `payment-srv`
 
-`payment-srv` — отдельное Spring Boot приложение с собственной базой `payment_db`. После TASK-14 — TASK-18 реализованы persistence и REST API создания и чтения платежей.
+payment-srv — отдельное Spring Boot приложение с собственной базой payment_db. Реализованы persistence, REST API создания и чтения платежей, а также REST API изменения статуса платежа.
 
 Основные компоненты:
 
@@ -258,6 +258,20 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 - `SUCCEEDED`;
 - `FAILED`.
 
+
+|Текущий статус | Новый статус | Результат |
+|---|---|---|
+| PENDING | SUCCEEDED| Разрешён |
+| PENDING | FAILED| Разрешён|
+| SUCCEEDED | SUCCEEDED | Идемпотентный вызов |
+| FAILED | FAILED | Идемпотентный вызов |
+| SUCCEEDED | FAILED / PENDING | Запрещён |
+| FAILED | SUCCEEDED / PENDING | Запрещён |
+
+SUCCEEDED и FAILED являются терминальными состояниями.
+
+Повторная установка текущего статуса идемпотентна: SQL UPDATE не выполняется.
+
 Фабричный метод `Payment.create(...)` создаёт платёж со статусом `PENDING`.
 
 `PaymentEntity` представляет persistence-запись; поле статуса в entity хранится как строка. Преобразование между entity и domain выполняет `PaymentDomainMapper`.
@@ -269,6 +283,10 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 - `save(Payment payment)` — сохраняет платёж и возвращает `PaymentEntity`;
 - `findById(Long id)` — возвращает `Optional<PaymentEntity>`;
 - `findAllByOrderId(Long orderId)` — возвращает список платежей заказа.
+- `findStatusById(Long id)` — читает текущий статус платежа с блокировкой строки через SELECT ... FOR UPDATE;.
+- `updateStatusById(Long id, PaymentStatus status)` — обновляет статус платежа и updated_at.
+
+Изменение статуса выполняется в транзакции. Чтение текущего статуса и последующее обновление защищены блокировкой строки.
 
 Реализация использует `NamedParameterJdbcTemplate` и PostgreSQL SQL. Для вставки используется `INSERT ... RETURNING`, чтобы получить запись с generated ID и временными полями.
 
@@ -283,6 +301,7 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 | POST | `/api/v1/payments` | Создать платёж |
 | GET | `/api/v1/payments/{id}` | Получить платёж по ID |
 | GET | `/api/v1/payments?orderId={orderId}` | Получить платежи по ID заказа |
+| PATCH | `/api/v1/payments/{id}/status` | Изменить статус платежа |
 
 **Создание платежа**
 
@@ -306,10 +325,27 @@ Flyway migrations находятся в `order-srv/src/main/resources/db/migrati
 
 На состоянии после TASK-18 не описаны endpoint изменения статуса платежа или отдельный payment workflow. Не считать их реализованными.
 
+**Изменение статуса платежа**
+
+`PATCH /api/v1/payments/{id}/status` принимает:
+```
+{
+  "status": "SUCCEEDED"
+}
+```
+
+Успешное изменение возвращает `204 No Content`.
+
+Повторная установка текущего статуса также возвращает `204 No Content`, при этом SQL UPDATE не выполняется.
+
 ### 7.4. HTTP error mapping
 
 - некорректные параметры и request validation — `400 Bad Request`;
-- платёж не найден — `404 Not Found`.
+- платёж не найден — `404 Not Found`;
+- недопустимый переход статуса — `409 Conflict`;
+- некорректное значение статуса, обнаруженное в БД, — `500 Internal Server Error`;
+
+Последний случай соответствует обработке DataConsistencyException: некорректные данные, уже находящиеся в БД, не должны интерпретироваться как ошибка клиентского запроса.
 
 Ответ ошибки формируется через `ApiErrorResponseDto` с полями `timestamp`, `status`, `error`, `message`, `path`.
 
@@ -348,9 +384,14 @@ Flyway migrations находятся в `payment-srv/src/main/resources/db/migra
 - `PaymentIntegrationRepositoryTest` — integration tests repository;
 - `PaymentControllerTest` — REST endpoints и validation;
 - `PaymentServiceTest` — service layer;
-- `PaymentIntegrationTest` — интеграционные сценарии;
+- `PaymentIntegrationTest` — интеграционные сценарии, включая изменение статусов и конкурентное выполнение запросов;
 - `PaymentTestData` — тестовые данные;
+-  проверяются допустимые переходы PENDING → SUCCEEDED и PENDING → FAILED;
+-  проверяются идемпотентные вызовы и запрещённые переходы;
+-  concurrency test использует PostgreSQL Testcontainers для проверки поведения при конкурентном изменении статуса.
 - `TestcontainersConfiguration` — конфигурация PostgreSQL Testcontainers.
+
+В описание механизма завершения executor не добавляю утверждение о гарантированном завершении потоков при прерывании: реализация восстанавливает interrupt flag после shutdownNow(), но повторного ожидания завершения в этом сценарии нет.
 
 Наличие тестов в репозитории не доказывает их успешный запуск в рамках текущей сверки. Не утверждать, что `./gradlew test` или `./gradlew clean build` прошли, если запуск не был выполнен или пользователь не предоставил результат.
 
