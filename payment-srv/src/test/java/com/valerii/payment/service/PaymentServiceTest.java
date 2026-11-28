@@ -283,7 +283,7 @@ public class PaymentServiceTest {
     }
 
     @Test
-    void updateStatus_shouldThrowInvalidPaymentStatusException_whenStatusInDatabaseIsInvalid() {
+    void updateStatus_shouldThrowDataConsistencyException_whenStatusInDatabaseIsInvalid() {
         Long id = 30L;
         UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
                 .status("PENDING")
