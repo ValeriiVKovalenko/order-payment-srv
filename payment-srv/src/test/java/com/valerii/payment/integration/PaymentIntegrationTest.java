@@ -9,6 +9,8 @@ import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -158,12 +160,13 @@ public class PaymentIntegrationTest {
                 .andExpect(jsonPath("$.[1].updatedAt").exists());
     }
 
-    @Test
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"SUCCEEDED", "FAILED"})
     @Sql("/sql/payments/payments-50.sql")
-    void updateStatus_shouldReturnNoContent_whenStatusIsValid() throws Exception {
+    void updateStatus_shouldReturnNoContent_whenStatusIsValid(String status) throws Exception {
         Long id = 6L;
         UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
-                .status("SUCCEEDED")
+                .status(status)
                 .build();
 
         PaymentEntity paymentEntityBefore = paymentRepository.findById(id).orElseThrow();
@@ -177,7 +180,7 @@ public class PaymentIntegrationTest {
 
         PaymentEntity paymentEntityAfter = paymentRepository.findById(id).orElseThrow();
         String statusAfter = paymentEntityAfter.getStatus();
-        assertThat(statusAfter).isEqualTo(PaymentStatus.SUCCEEDED.name());
+        assertThat(statusAfter).isEqualTo(status);
 
         OffsetDateTime updatedAtBefore = paymentEntityBefore.getUpdatedAt();
         OffsetDateTime updatedAtAfter= paymentEntityAfter.getUpdatedAt();

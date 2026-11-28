@@ -1,5 +1,6 @@
 package com.valerii.payment.exception.exceptionhandler;
 
+import com.valerii.payment.exception.DataConsistencyException;
 import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.exception.InvalidPaymentStatusException;
@@ -79,6 +80,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponseDto> handlePaymentStatusNotFoundException(InvalidPaymentStatusException ex,
                                                                                     HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(DataConsistencyException.class)
+    public ResponseEntity<ApiErrorResponseDto> handleDataConsistencyException(DataConsistencyException ex,
+                                                                              HttpServletRequest request) {
+        return build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request);
     }
 
     private ResponseEntity<ApiErrorResponseDto> build(HttpStatus status, String message, HttpServletRequest request) {

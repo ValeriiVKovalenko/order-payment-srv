@@ -1,5 +1,6 @@
 package com.valerii.payment.service;
 
+import com.valerii.payment.exception.DataConsistencyException;
 import com.valerii.payment.exception.InvalidPaymentStatusException;
 import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
@@ -12,6 +13,8 @@ import com.valerii.payment.model.request.UpdateStatusRequestDto;
 import com.valerii.payment.repository.PaymentRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -232,14 +235,15 @@ public class PaymentServiceTest {
         assertThat(result).isEmpty();
     }
 
-    @Test
-    void updateStatus_shouldUpdateStatus_whenPaymentExists() {
+    @ParameterizedTest(name = "status={0} should be rejected")
+    @ValueSource(strings = {"SUCCEEDED", "FAILED"})
+    void updateStatus_shouldUpdateStatus_whenPaymentExists(String status) {
         Long id = 30L;
         UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
-                .status("SUCCEEDED")
+                .status(status)
                 .build();
-        String status = PaymentStatus.PENDING.name();
-        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(status));
+        String statusBefore = PaymentStatus.PENDING.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(statusBefore));
 
         String newStatus = request.getStatus();
         doNothing().when(paymentRepository).updateStatusById(id, newStatus);
@@ -288,7 +292,7 @@ public class PaymentServiceTest {
         when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(invalidStatus));
 
         assertThatThrownBy(() -> paymentService.updateStatus(id, request))
-                .isInstanceOf(InvalidPaymentStatusException.class);
+                .isInstanceOf(DataConsistencyException.class);
 
         verify(paymentRepository).findStatusById(id);
         verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
@@ -324,5 +328,4 @@ public class PaymentServiceTest {
         verify(paymentRepository).findStatusById(id);
         verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
     }
-
 }

@@ -19,10 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -108,7 +105,7 @@ public class PaymentServiceConcurrencyIntegrationTest {
             assertThat(finalStatus).isEqualTo("SUCCEEDED");
         } finally {
             releaseLock.countDown();
-            executor.shutdownNow();
+            shutdownAndAwait(executor);
         }
     }
 
@@ -120,6 +117,22 @@ public class PaymentServiceConcurrencyIntegrationTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(e);
+        }
+    }
+
+    private static void shutdownAndAwait(ExecutorService executor) {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(10, SECONDS)) {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(5, SECONDS)) {
+                    throw new IllegalStateException(
+                            "Background tasks have not completed; a transaction leak is possible");
+                }
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
     }
 }
