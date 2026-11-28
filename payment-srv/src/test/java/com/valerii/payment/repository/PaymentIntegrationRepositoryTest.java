@@ -4,14 +4,18 @@ import com.valerii.payment.config.TestcontainersConfiguration;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.entity.PaymentEntity;
 import com.valerii.payment.model.enums.PaymentStatus;
+import lombok.SneakyThrows;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.jdbc.Sql;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,7 +34,7 @@ public class PaymentIntegrationRepositoryTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    @BeforeEach
+    @AfterEach
     void cleanUp() {
         jdbc.execute("TRUNCATE TABLE payments RESTART IDENTITY CASCADE");
     }
@@ -144,5 +148,31 @@ public class PaymentIntegrationRepositoryTest {
 
         //then
         assertThat(resultList).isEmpty();
+    }
+
+    @Test
+    @Sql("/sql/payments/payments-50.sql")
+    void findStatusById_shouldReturnStatus_whenPaymentExists() {
+        Long id = 20L;
+
+        String status = paymentRepository.findStatusById(id).orElseThrow();
+
+        assertThat(status).isEqualTo(PaymentStatus.PENDING.name());
+    }
+
+    @Test
+    @Sql("/sql/payments/payments-50.sql")
+    void updateStatusById_shouldUpdateStatus_whenPaymentExists() {
+        Long id = 6L;
+        PaymentEntity before = paymentRepository.findById(id).orElseThrow();
+        OffsetDateTime updatedAtBefore = before.getUpdatedAt();
+
+        String newStatus = PaymentStatus.SUCCEEDED.name();
+        paymentRepository.updateStatusById(id, newStatus);
+
+        PaymentEntity after = paymentRepository.findById(id).orElseThrow();
+
+        assertThat(after.getStatus()).isEqualTo(newStatus);
+        assertThat(after.getUpdatedAt()).isAfter(updatedAtBefore);
     }
 }

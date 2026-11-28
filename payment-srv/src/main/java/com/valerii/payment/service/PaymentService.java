@@ -3,8 +3,6 @@ package com.valerii.payment.service;
 import com.valerii.payment.model.command.CreatePaymentCommand;
 import com.valerii.payment.model.domain.Payment;
 import com.valerii.payment.model.request.UpdateStatusRequestDto;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 
 import java.util.List;
 

@@ -1,6 +1,7 @@
 package com.valerii.payment.service;
 
 import com.valerii.payment.exception.InvalidPaymentStatusException;
+import com.valerii.payment.exception.InvalidPaymentUpdateStatusException;
 import com.valerii.payment.exception.PaymentNotFoundException;
 import com.valerii.payment.mapper.PaymentDomainMapper;
 import com.valerii.payment.model.command.CreatePaymentCommand;
@@ -293,5 +294,35 @@ public class PaymentServiceTest {
         verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
     }
 
+    @Test
+    void updateStatus_shouldSkipUpdateStatus_whenOldStatusIsEqualNewStatus() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("SUCCEEDED")
+                .build();
+        String status = PaymentStatus.SUCCEEDED.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(status));
+
+        paymentService.updateStatus(id, request);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
+
+    @Test
+    void updateStatus_shouldThrowInvalidPaymentUpdateStatusException_whenTransitionIsFailed() {
+        Long id = 30L;
+        UpdateStatusRequestDto request = UpdateStatusRequestDto.builder()
+                .status("SUCCEEDED")
+                .build();
+        String status = PaymentStatus.FAILED.name();
+        when(paymentRepository.findStatusById(id)).thenReturn(Optional.of(status));
+
+        assertThatThrownBy(() -> paymentService.updateStatus(id, request))
+                .isInstanceOf(InvalidPaymentUpdateStatusException.class);
+
+        verify(paymentRepository).findStatusById(id);
+        verify(paymentRepository, never()).updateStatusById(anyLong(), anyString());
+    }
 
 }
